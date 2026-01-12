@@ -1,4 +1,3 @@
-import type { Config } from "tailwindcss";
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -8,7 +7,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        "primary": "#1bda5b", // El Verde Cívico oficial
+        "primary": "#1bda5b", // Verde Cívico oficial
         "navy-dark": "#0d1b2a",
         "card-dark": "#1b263b",
         "field-dark": "#2a364a",
