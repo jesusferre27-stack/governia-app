@@ -1,14 +1,28 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/container-queries";
 
-:root {
-  --background: #0F172A;
-  --foreground: #ffffff;
+@theme {
+  --color-primary: #1bda5b;
+  --color-background-light: #f6f8f6;
+  --color-background-dark: #0A192F;
+  --color-card-dark: #172A46;
+  --color-text-light: #334155;
+  --color-text-dark: #E2E8F0;
+  --color-text-muted-dark: #8892B0;
+
+  --font-display: 'Poppins', sans-serif;
+  --font-heading: 'Montserrat', sans-serif;
+
+  --radius-DEFAULT: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
 }
 
+/* Custom Utilities if needed */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: sans-serif;
+  font-family: var(--font-display);
+  background-color: var(--color-background-dark);
+  color: var(--color-text-dark);
 }

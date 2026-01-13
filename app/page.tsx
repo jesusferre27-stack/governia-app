@@ -1,76 +1,55 @@
-"use client";
+import Link from "next/link";
+import Image from "next/image";
 
-import { useState } from "react";
-import { supabase } from "./supabase"; // Importamos el puente que creamos
-
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    // Consultamos tu tabla de Flutter 'app_users'
-    const { data, error } = await supabase
-      .from("app_users")
-      .select("*")
-      .eq("email", email)
-      .single();
-
-    if (error || !data) {
-      alert("Error: Usuario no encontrado en la base de datos municipal.");
-    } else {
-      // Aquí podrías validar la contraseña o usar el sistema de Auth de Supabase
-      alert(`¡Bienvenido, ${data.full_name || 'Funcionario'}! Acceso concedido.`);
-    }
-    setLoading(false);
-  };
-
+export default function LandingPage() {
   return (
-    <div className="relative flex min-h-screen w-full flex-col items-center justify-center p-4 bg-[#0d1b2a] font-sans">
-      <div className="w-full max-w-sm">
-        <header className="text-center mb-8">
-          <h1 className="text-[#1bda5b] text-[32px] font-bold leading-tight">GOVERNIA</h1>
-        </header>
-        
-        <main className="bg-[#1b263b] p-8 rounded-xl shadow-2xl">
-          <form onSubmit={handleLogin} className="flex flex-col gap-6">
-            <div className="flex flex-col">
-              <label className="text-[#e0e1dd] text-sm font-medium pb-2">Email Address</label>
-              <input 
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg text-[#e0e1dd] border border-[#415a77] bg-[#2a364a] h-14 p-3.5 outline-none focus:border-[#1bda5b]"
-                placeholder="tu@municipio.gov" 
-                type="email" 
-              />
-            </div>
+    <div className="min-h-screen bg-[#0B1116] flex flex-col items-center justify-center p-8 relative overflow-hidden">
 
-            <div className="flex flex-col">
-              <label className="text-[#e0e1dd] text-sm font-medium pb-2">Password</label>
-              <input 
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg text-[#e0e1dd] border border-[#415a77] bg-[#2a364a] h-14 p-3.5 outline-none focus:border-[#1bda5b]"
-                placeholder="••••••••••••" 
-                type="password" 
-              />
-            </div>
+      {/* Background Gradients */}
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-[#1bda5b]/10 via-[#0B1116] to-[#0B1116]"></div>
 
-            <button 
-              disabled={loading}
-              className="flex w-full items-center justify-center rounded-lg bg-[#1bda5b] h-14 px-6 text-base font-semibold text-[#0d1b2a] hover:brightness-110 transition-all disabled:opacity-50" 
-              type="submit"
-            >
-              {loading ? "Verificando..." : "Login"}
-            </button>
-          </form>
-        </main>
+      <div className="relative z-10 max-w-2xl w-full space-y-12 text-center">
+
+        <div className="space-y-4 animate-in zoom-in duration-700">
+          <div className="w-24 h-24 bg-gradient-to-tr from-[#1bda5b] to-emerald-700 rounded-3xl mx-auto flex items-center justify-center shadow-[0_0_40px_rgba(27,218,91,0.3)] mb-6">
+            <span className="material-symbols-outlined text-black text-5xl">shield</span>
+          </div>
+          <h1 className="text-5xl font-bold text-white tracking-tight">GOVERNIA</h1>
+          <p className="text-xl text-gray-400">Plataforma de Gobierno Digital Inteligente</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+          {/* Staff Card */}
+          <Link href="/dashboard" className="group">
+            <div className="bg-[#151F26] border border-gray-800 p-8 rounded-3xl hover:border-[#1bda5b] transition-all hover:shadow-[0_0_30px_rgba(27,218,91,0.1)] h-full flex flex-col items-center justify-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[#1C262E] flex items-center justify-center group-hover:bg-[#1bda5b] transition-colors">
+                <span className="material-symbols-outlined text-white text-3xl group-hover:text-black">admin_panel_settings</span>
+              </div>
+              <div className="text-center">
+                <h3 className="text-white font-bold text-xl">Staff / Alcaldía</h3>
+                <p className="text-gray-500 text-sm mt-2">Panel administrativo y gestión de operarios</p>
+              </div>
+            </div>
+          </Link>
+
+          {/* Citizen Card */}
+          <Link href="/citizen" className="group">
+            <div className="bg-[#151F26] border border-gray-800 p-8 rounded-3xl hover:border-[#1bda5b] transition-all hover:shadow-[0_0_30px_rgba(27,218,91,0.1)] h-full flex flex-col items-center justify-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[#1C262E] flex items-center justify-center group-hover:bg-[#1bda5b] transition-colors">
+                <span className="material-symbols-outlined text-white text-3xl group-hover:text-black">smartphone</span>
+              </div>
+              <div className="text-center">
+                <h3 className="text-white font-bold text-xl">App Ciudadana</h3>
+                <p className="text-gray-500 text-sm mt-2">Simulación móvil para el ciudadano</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        <p className="text-gray-600 text-sm font-mono">v2.4.0 • Build Sprint</p>
+
       </div>
+
     </div>
   );
 }

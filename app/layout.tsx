@@ -15,9 +15,16 @@ export default function RootLayout({
     <html lang="es">
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        <style>{`
+          /* Custom Scrollbar Hide */
+          .no-scrollbar::-webkit-scrollbar { display: none; }
+          .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        `}</style>
       </head>
-      <body>{children}</body>
+      <body className="min-h-screen bg-gov-bg font-sans overflow-x-hidden text-white">
+        {children}
+      </body>
     </html>
   );
 }

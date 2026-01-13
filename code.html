@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mayor Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&amp;family=Poppins:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#1bda5b",
+              "background-light": "#f6f8f6",
+              "background-dark": "#0A192F",
+              "card-dark": "#172A46",
+              "text-light": "#334155",
+              "text-dark": "#E2E8F0",
+              "text-muted-dark": "#8892B0",
+            },
+            fontFamily: {
+              "display": ["Poppins", "sans-serif"],
+              "heading": ["Montserrat", "sans-serif"],
+            },
+            borderRadius: {
+              "DEFAULT": "0.375rem", // md
+              "lg": "0.5rem",
+              "xl": "0.75rem",
+              "full": "9999px"
+            },
+          },
+        },
+      }
+    </script>
+<style>
+      body {
+        font-family: 'Poppins', sans-serif;
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark font-display text-text-dark">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background-dark dark group/design-root overflow-x-hidden">
+<!-- Top App Bar -->
+<div class="flex items-center p-4 pb-2 justify-between">
+<div class="flex size-12 shrink-0 items-center">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9" data-alt="User profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBM7C2FhswXQQyOUq2rCAlR0_Zw9Dc_uaXKfTU5OR3TF4uAlSogmMTnxp_pwAZdb8Mqm3ThCYDATOi24fC3JXOI86-tCotjJyRSziOOWVvnmnw8JkbVYbhIWEYjoZpWqHif7Dv_b8sFh91RVdL8fsXMYEeyLFUiqbFrQw_-dVoyCb4FgVbJ1TRR6G1ZXXK5KAtak_hrh1qme-h0ylnX3AsRlrwmm2RJRvMSCAymouxKaZpjkhPoCj9Yygn86iOjugvXZ3EBToo-noDB");'></div>
+</div>
+<h1 class="font-heading text-lg font-bold text-text-dark">Mayor Dashboard</h1>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-transparent text-text-dark gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<span class="material-symbols-outlined text-text-muted-dark">settings</span>
+</button>
+</div>
+</div>
+<!-- Stats -->
+<div class="flex flex-wrap gap-4 p-4">
+<div class="flex min-w-[100px] flex-1 flex-col gap-2 rounded-lg p-4 bg-card-dark shadow-lg">
+<p class="text-text-muted-dark text-sm font-medium">New Reports</p>
+<p class="text-primary tracking-tight text-3xl font-bold">124</p>
+</div>
+<div class="flex min-w-[100px] flex-1 flex-col gap-2 rounded-lg p-4 bg-card-dark shadow-lg">
+<p class="text-text-muted-dark text-sm font-medium">SLA Breaches</p>
+<p class="text-primary tracking-tight text-3xl font-bold">12</p>
+</div>
+<div class="flex min-w-[100px] flex-1 flex-col gap-2 rounded-lg p-4 bg-card-dark shadow-lg">
+<p class="text-text-muted-dark text-sm font-medium">Delayed Works</p>
+<p class="text-primary tracking-tight text-3xl font-bold">8</p>
+</div>
+</div>
+<!-- IA Recommendations Card -->
+<div class="px-4 pb-4">
+<div class="flex flex-col items-stretch justify-start rounded-lg shadow-lg bg-card-dark">
+<div class="flex w-full min-w-72 grow flex-col items-stretch justify-center gap-2 p-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">auto_awesome</span>
+<p class="font-heading text-lg font-bold text-text-dark">IA Recommendations</p>
+</div>
+<div class="flex flex-col gap-2">
+<p class="text-text-muted-dark text-base">Review sanitation reports in District 4.</p>
+<p class="text-text-muted-dark text-base">Allocate resources to pending Public Works project #8B.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Overview Cards -->
+<div class="flex flex-col gap-4 px-4 pb-4">
+<!-- Citizen Reports -->
+<div class="flex flex-col gap-4 rounded-lg bg-card-dark p-4 shadow-lg">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">report</span>
+<p class="font-heading text-base font-bold text-text-dark">Citizen Reports</p>
+</div>
+<p class="text-text-dark tracking-tight text-3xl font-bold">85% Resolved</p>
+<div class="flex gap-2 items-center">
+<p class="text-text-muted-dark text-sm">Last 7 Days</p>
+<div class="flex items-center gap-1 text-green-400">
+<span class="material-symbols-outlined text-base">arrow_upward</span>
+<p class="text-sm font-medium">+2%</p>
+</div>
+</div>
+<div class="grid min-h-[120px] grid-flow-col gap-4 grid-rows-[1fr_auto] items-end justify-items-center">
+<div class="bg-primary/20 w-full rounded-t" style="height: 100%;"></div>
+<div class="bg-primary/20 w-full rounded-t" style="height: 50%;"></div>
+<div class="bg-primary/20 w-full rounded-t" style="height: 20%;"></div>
+<div class="bg-primary/20 w-full rounded-t" style="height: 30%;"></div>
+<div class="bg-primary w-full rounded-t" style="height: 90%;"></div>
+</div>
+</div>
+<!-- Public Works -->
+<div class="flex flex-col gap-4 rounded-lg bg-card-dark p-4 shadow-lg">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">engineering</span>
+<p class="font-heading text-base font-bold text-text-dark">Public Works</p>
+</div>
+<p class="text-text-dark tracking-tight text-3xl font-bold">72% On Schedule</p>
+<div class="flex gap-2 items-center">
+<p class="text-text-muted-dark text-sm">Last 30 Days</p>
+<div class="flex items-center gap-1 text-red-400">
+<span class="material-symbols-outlined text-base">arrow_downward</span>
+<p class="text-sm font-medium">-1.5%</p>
+</div>
+</div>
+<div class="flex min-h-[120px] flex-1 flex-col justify-end">
+<svg fill="none" height="100" preserveaspectratio="none" viewbox="-3 0 478 150" width="100%" xmlns="http://www.w3.org/2000/svg">
+<path d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25V149H326.769H0V109Z" fill="url(#sparkline-gradient)"></path>
+<path d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25" stroke="#1bda5b" stroke-linecap="round" stroke-width="4"></path>
+<defs>
+<lineargradient gradientunits="userSpaceOnUse" id="sparkline-gradient" x1="236" x2="236" y1="1" y2="149">
+<stop stop-color="#1bda5b" stop-opacity="0.3"></stop>
+<stop offset="1" stop-color="#1bda5b" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+</div>
+<!-- Social Sentiment -->
+<div class="flex flex-col gap-4 rounded-lg bg-card-dark p-4 shadow-lg">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">sentiment_satisfied</span>
+<p class="font-heading text-base font-bold text-text-dark">Social Sentiment</p>
+</div>
+<p class="text-text-dark tracking-tight text-3xl font-bold">Positive</p>
+<div class="flex gap-2 items-center">
+<p class="text-text-muted-dark text-sm">Last 24 Hours</p>
+<div class="flex items-center gap-1 text-green-400">
+<span class="material-symbols-outlined text-base">arrow_upward</span>
+<p class="text-sm font-medium">+5%</p>
+</div>
+</div>
+<div class="flex min-h-[120px] flex-1 flex-col justify-end">
+<svg fill="none" height="100" preserveaspectratio="none" viewbox="-3 0 478 150" width="100%" xmlns="http://www.w3.org/2000/svg">
+<path d="M0 45C18.1538 45 18.1538 93 36.3077 93C54.4615 93 54.4615 61 72.6154 61C90.7692 61 90.7692 21 108.923 21C127.077 21 127.077 101 145.231 101C163.385 101 163.385 41 181.538 41C199.692 41 199.692 121 217.846 121C236 121 236 1 254.154 1C272.308 1 272.308 149 290.462 149C308.615 149 308.615 81 326.769 81C344.923 81 344.923 129 363.077 129C381.231 129 381.231 25 399.385 25C417.538 25 417.538 109 435.692 109C453.846 109 453.846 33 472 33V149H0V45Z" fill="url(#sparkline-gradient)"></path>
+<path d="M0 45C18.1538 45 18.1538 93 36.3077 93C54.4615 93 54.4615 61 72.6154 61C90.7692 61 90.7692 21 108.923 21C127.077 21 127.077 101 145.231 101C163.385 101 163.385 41 181.538 41C199.692 41 199.692 121 217.846 121C236 121 236 1 254.154 1C272.308 1 272.308 149 290.462 149C308.615 149 308.615 81 326.769 81C344.923 81 344.923 129 363.077 129C381.231 129 381.231 25 399.385 25C417.538 25 417.538 109 435.692 109C453.846 109 453.846 33 472 33" stroke="#1bda5b" stroke-linecap="round" stroke-width="4"></path>
+</svg>
+</div>
+</div>
+<!-- Municipal Hotspots Card -->
+<div class="px-0 pb-0">
+<div class="flex flex-col items-stretch justify-start rounded-lg shadow-lg bg-card-dark overflow-hidden">
+<div class="flex w-full min-w-72 grow flex-col items-stretch justify-center gap-1 p-4 pb-2">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<p class="font-heading text-base font-bold text-text-dark">Municipal Hotspots</p>
+</div>
+<p class="text-text-muted-dark text-sm">Heatmap showing density of citizen reports.</p>
+</div>
+<div class="w-full bg-center bg-no-repeat aspect-video bg-cover" data-alt="Heatmap of a city with red and green spots" data-location="City of Governia" style='background-image: url("https://placeholder.pics/svg/300");'></div>
+</div>
+</div>
+</div>
+</div>
+</body></html>
