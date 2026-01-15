@@ -23,7 +23,7 @@ export default function ProjectsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((proj) => (
-                    <Link href={`/projects/${proj.id}`} key={proj.id}>
+                    <Link href={`/staff/projects/${proj.id}`} key={proj.id}>
                         <div className="bg-gov-surface border border-gov-light rounded-2xl overflow-hidden group cursor-pointer hover:border-gov-primary/50 transition-all hover:shadow-[0_0_20px_rgba(27,218,91,0.1)]">
                             <div className="h-48 bg-cover bg-center relative group-hover:scale-105 transition-transform duration-700" style={{ backgroundImage: `url(${proj.img})` }}>
                                 <div className="absolute inset-0 bg-gradient-to-t from-gov-surface to-transparent"></div>

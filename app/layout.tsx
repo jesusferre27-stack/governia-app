@@ -2,8 +2,27 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Governia - Staff Login",
-  description: "Portal de gestión municipal",
+  title: "Governia - Portal Municipal",
+  description: "Plataforma Digital Oficial del Municipio de Soteapan",
+  applicationName: "Governia",
+  appleWebApp: {
+    capable: true,
+    title: "Governia",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  themeColor: "#04101f",
+  metadataBase: new URL("https://governia.vercel.app"),
+  robots: {
+    index: false,
+    follow: false,
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
 };
 
 export default function RootLayout({

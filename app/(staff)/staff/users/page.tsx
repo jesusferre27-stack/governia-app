@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 const users = [
     { name: "Esther Howard", role: "Admin", email: "esther@gov.com", status: "Active", lastAccess: "Hace 5 min" },
     { name: "Cameron Williamson", role: "Editor", email: "cameron@gov.com", status: "Active", lastAccess: "Hace 2h" },
@@ -78,7 +80,9 @@ export default function UsersPage() {
                                                 <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gov-surface ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-gov-grey'}`}></div>
                                             </div>
                                             <div>
-                                                <p className="font-bold text-white text-sm group-hover:text-gov-primary transition-colors">{user.name}</p>
+                                                <Link href={`/staff/users/${i}`} className="font-bold text-white text-sm group-hover:text-gov-primary transition-colors hover:underline">
+                                                    {user.name}
+                                                </Link>
                                                 <p className="text-gov-grey text-xs font-medium">{user.email}</p>
                                             </div>
                                         </div>

@@ -82,7 +82,7 @@ export default function IncidentsPage() {
                 {/* Incidents List */}
                 <div className="space-y-3">
                     {filteredIncidents.map((inc) => (
-                        <Link href={`/incidents/${inc.id}`} key={inc.id}>
+                        <Link href={`/staff/incidents/${inc.id}`} key={inc.id}>
                             <div className={`group relative bg-gov-bg border border-gov-light rounded-xl p-4 hover:border-gov-primary/50 transition-all cursor-pointer overflow-hidden ${inc.urgency === "Alta" ? "border-l-4 border-l-gov-danger" : "border-l-4 border-l-gov-light"}`}>
 
                                 {/* Hover Actions Overlay (Ghost Buttons) */}

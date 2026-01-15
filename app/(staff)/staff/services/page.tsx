@@ -80,10 +80,10 @@ export default function ServicesPage() {
                             {/* Hover Actions Overlay */}
                             <div className="absolute inset-0 bg-gov-surface/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end px-6 gap-3 z-10">
                                 <span className="text-gov-grey text-xs font-bold mr-auto pl-4">ID: {req.id}</span>
-                                <button className="bg-gov-primary/10 hover:bg-gov-primary text-gov-primary hover:text-gov-bg px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                                <Link href={`/staff/services/${req.id}`} className="bg-gov-primary/10 hover:bg-gov-primary text-gov-primary hover:text-gov-bg px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
                                     <span className="material-symbols-outlined text-lg">visibility</span>
                                     Ver Detalle
-                                </button>
+                                </Link>
                                 {req.status === "Pendiente" && (
                                     <button className="bg-gov-light hover:bg-white text-white hover:text-gov-bg px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
                                         <span className="material-symbols-outlined text-lg">person_add</span>

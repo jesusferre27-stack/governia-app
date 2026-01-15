@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const menuItems = [
-    { name: "Dashboard", href: "/dashboard", icon: "dashboard" },
-    { name: "Incidentes", href: "/incidents", icon: "warning" },
-    { name: "Obras Públicas", href: "/projects", icon: "engineering" },
-    { name: "Servicios", href: "/services", icon: "assignment" },
-    { name: "Social", href: "/social", icon: "sentiment_satisfied" },
-    { name: "Usuarios", href: "/users", icon: "group" },
-    { name: "Configuración", href: "/settings", icon: "settings" },
+    { name: "Dashboard", href: "/staff/dashboard", icon: "dashboard" },
+    { name: "Incidentes", href: "/staff/incidents", icon: "warning" },
+    { name: "Obras Públicas", href: "/staff/projects", icon: "engineering" },
+    { name: "Servicios", href: "/staff/services", icon: "assignment" },
+    { name: "Social", href: "/staff/social", icon: "sentiment_satisfied" },
+    { name: "Usuarios", href: "/staff/users", icon: "group" },
+    { name: "Configuración", href: "/staff/settings", icon: "settings" },
 ];
 
 export default function Sidebar() {
@@ -33,8 +33,8 @@ export default function Sidebar() {
                             key={item.href}
                             href={item.href}
                             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${isActive
-                                    ? "bg-gov-primary text-gov-bg shadow-[0_0_15px_rgba(27,218,91,0.3)] font-bold"
-                                    : "text-gov-grey hover:bg-gov-light hover:text-white"
+                                ? "bg-gov-primary text-gov-bg shadow-[0_0_15px_rgba(27,218,91,0.3)] font-bold"
+                                : "text-gov-grey hover:bg-gov-light hover:text-white"
                                 }`}
                         >
                             <span className="material-symbols-outlined">{item.icon}</span>

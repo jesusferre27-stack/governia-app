@@ -19,23 +19,31 @@ export default function CitizenActivityPage() {
             {/* List of Reports */}
             <div className="space-y-4">
                 {[
-                    { title: "Poste de luz fallando", date: "23 Oct, 2023", loc: "Av. Principal", status: "En Proceso", icon: "lightbulb", color: "text-amber-400", statusColor: "text-amber-400 bg-amber-400/10 border border-amber-400/20" },
-                    { title: "Bache peligroso", date: "21 Oct, 2023", loc: "Calle Roble", status: "Resuelto", icon: "star", color: "text-emerald-400", statusColor: "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20" },
-                    { title: "Basura acumulada", date: "19 Oct, 2023", loc: "Parque Ciudad", status: "Resuelto", icon: "delete", color: "text-emerald-400", statusColor: "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20" },
-                    { title: "Fuga de agua", date: "15 Oct, 2023", loc: "Calle Sol #123", status: "Nuevo", icon: "water_drop", color: "text-blue-400", statusColor: "text-blue-400 bg-blue-400/10 border border-blue-400/20" }
+                    { title: "Poste de luz fallando", date: "Reportado hace 2 días", loc: "Av. Principal", status: "En Proceso", icon: "lightbulb", statusColor: "text-amber-400 bg-amber-400/10 border border-amber-400/20", borderColor: "border-l-amber-400" },
+                    { title: "Bache peligroso", date: "Resuelto hace 1 día", loc: "Calle Roble", status: "Resuelto", icon: "star", statusColor: "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20", borderColor: "border-l-emerald-400" },
+                    { title: "Basura acumulada", date: "Resuelto hace 3 días", loc: "Parque Ciudad", status: "Resuelto", icon: "delete", statusColor: "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20", borderColor: "border-l-emerald-400" },
+                    { title: "Fuga de agua", date: "Reportado hace 2 horas", loc: "Calle Sol #123", status: "Nuevo", icon: "water_drop", statusColor: "text-blue-400 bg-blue-400/10 border border-blue-400/20", borderColor: "border-l-blue-400" }
                 ].map((item, i) => (
-                    <div key={i} className="bg-gov-surface border border-gov-light/50 p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all hover:bg-gov-light/30 shadow-sm cursor-pointer group">
+                    <div key={i} className={`bg-gov-surface border-y border-r border-gov-light/50 border-l-4 ${item.borderColor} p-4 rounded-xl flex items-center justify-between active:scale-[0.99] transition-all hover:bg-gov-surface/80 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer group relative overflow-hidden`}>
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gov-bg flex items-center justify-center shrink-0 border border-gov-light group-hover:border-gov-primary/30 transition-colors">
-                                <span className={`material-symbols-outlined ${item.color}`}>{item.icon}</span>
+                            <div className="w-12 h-12 rounded-full bg-gov-light/5 flex items-center justify-center shrink-0 border border-white/5 group-hover:border-gov-primary/20 transition-colors">
+                                <span className="material-symbols-outlined text-gov-grey group-hover:text-white transition-colors">{item.icon}</span>
                             </div>
                             <div>
-                                <h4 className="text-white font-bold text-sm mb-0.5">{item.title}</h4>
-                                <p className="text-xs text-gov-grey font-medium">{item.date} • {item.loc}</p>
+                                <h4 className="text-white font-bold text-base mb-1">{item.title}</h4>
+                                <p className="text-xs text-gov-grey font-medium flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[10px]">schedule</span>
+                                    {item.date} • {item.loc}
+                                </p>
                             </div>
                         </div>
-                        <div className={`text-[10px] font-bold px-3 py-1.5 rounded-full ${item.statusColor}`}>
-                            {item.status}
+                        <div className="flex flex-col items-end gap-2">
+                            <div className={`text-[10px] font-bold px-3 py-1 rounded-full ${item.statusColor}`}>
+                                {item.status}
+                            </div>
+                            <span className="text-[10px] text-gov-primary opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 duration-300 flex items-center gap-0.5">
+                                Ver detalle <span className="material-symbols-outlined text-[10px]">arrow_forward</span>
+                            </span>
                         </div>
                     </div>
                 ))}
