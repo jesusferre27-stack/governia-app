@@ -5,7 +5,7 @@ import Link from "next/link";
 export default function LandingPage() {
   return (
     <div
-      className="h-screen w-full relative overflow-hidden flex flex-col items-center justify-center font-sans -mb-1"
+      className="min-h-screen w-full relative flex flex-col items-center justify-center font-sans py-12 px-4 md:px-6 overflow-x-hidden"
       style={{
         background: `
                     radial-gradient(900px 500px at 50% 0%, rgba(255,255,255,0.05), transparent 60%),
@@ -15,7 +15,7 @@ export default function LandingPage() {
     >
 
       {/* Header Content */}
-      <div className="relative z-10 w-full max-w-4xl px-6 flex flex-col items-center gap-8 md:gap-12">
+      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-8 md:gap-12">
 
         {/* Main Brand Header */}
         <div className="text-center space-y-4 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -42,9 +42,9 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full pt-2">
 
           {/* Staff Card */}
-          <Link href="/staff/login" className="group h-full">
+          <Link href="/staff/login" className="group h-full w-full">
             <div
-              className="h-full rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_30px_60px_rgba(0,0,0,0.5)] border border-white/10"
+              className="h-full w-full rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_30px_60px_rgba(0,0,0,0.5)] border border-white/10"
               style={{
                 background: 'rgba(255,255,255,0.06)',
                 backdropFilter: 'blur(14px)',
@@ -69,9 +69,9 @@ export default function LandingPage() {
           </Link>
 
           {/* Citizen Card */}
-          <Link href="/citizen/login" className="group h-full">
+          <Link href="/citizen/login" className="group h-full w-full">
             <div
-              className="h-full rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_30px_60px_rgba(0,0,0,0.5)] border border-white/10"
+              className="h-full w-full rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_30px_60px_rgba(0,0,0,0.5)] border border-white/10"
               style={{
                 background: 'rgba(255,255,255,0.06)',
                 backdropFilter: 'blur(14px)',
@@ -97,7 +97,7 @@ export default function LandingPage() {
 
         </div>
 
-        <div className="absolute bottom-6 opacity-30">
+        <div className="mt-8 opacity-30">
           <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">
             Plataforma Oficial v3.0
           </p>

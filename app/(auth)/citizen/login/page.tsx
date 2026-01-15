@@ -60,7 +60,7 @@ export default function CitizenLoginPage() {
 
     return (
         <div
-            className="h-screen w-full flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans"
+            className="min-h-screen w-full flex flex-col items-center justify-center p-6 relative overflow-x-hidden font-sans"
             style={{
                 background: `
                     radial-gradient(900px 500px at 50% 0%, rgba(255,255,255,0.05), transparent 60%),
@@ -74,7 +74,7 @@ export default function CitizenLoginPage() {
             </h1>
 
             <div
-                className="w-full max-w-[400px] rounded-3xl p-10 flex flex-col relative z-10 animate-in zoom-in duration-500"
+                className="w-full max-w-[400px] rounded-3xl p-8 md:p-10 flex flex-col relative z-10 animate-in zoom-in duration-500"
                 style={{
                     background: 'rgba(255,255,255,0.06)',
                     backdropFilter: 'blur(14px)',
