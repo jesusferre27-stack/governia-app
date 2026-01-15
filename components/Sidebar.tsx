@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,46 +17,72 @@ const menuItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <aside className="w-64 bg-gov-surface border-r border-gov-light flex flex-col h-screen fixed left-0 top-0 z-50">
-            <div className="p-6 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gov-primary to-emerald-600 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-gov-bg font-bold text-sm">shield</span>
-                </div>
-                <h1 className="text-xl font-bold tracking-tight text-white">GOVERNIA</h1>
-            </div>
+        <>
+            {/* Mobile Toggle Button */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gov-surface border border-gov-light rounded-lg shadow-lg text-white hover:bg-gov-light transition-colors"
+            >
+                <span className="material-symbols-outlined">
+                    {isOpen ? "close" : "menu"}
+                </span>
+            </button>
 
-            <nav className="flex-1 px-4 py-4 space-y-1">
-                {menuItems.map((item) => {
-                    const isActive = pathname.startsWith(item.href);
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${isActive
-                                ? "bg-gov-primary text-gov-bg shadow-[0_0_15px_rgba(27,218,91,0.3)] font-bold"
-                                : "text-gov-grey hover:bg-gov-light hover:text-white"
-                                }`}
-                        >
-                            <span className="material-symbols-outlined">{item.icon}</span>
-                            {item.name}
-                        </Link>
-                    );
-                })}
-            </nav>
+            {/* Overlay for mobile */}
+            {isOpen && (
+                <div
+                    className="md:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
+                    onClick={() => setIsOpen(false)}
+                />
+            )}
 
-            <div className="p-4 border-t border-gov-light">
-                <div className="flex items-center gap-3 px-4 py-2">
-                    <div className="w-8 h-8 rounded-full bg-gov-light flex items-center justify-center text-xs font-bold text-gov-primary border border-gov-primary/20">
-                        SL
+            <aside className={`
+                w-64 bg-gov-surface border-r border-gov-light flex flex-col h-screen fixed left-0 top-0 z-50 transition-transform duration-300
+                ${isOpen ? "translate-x-0" : "-translate-x-full"}
+                md:translate-x-0
+            `}>
+                <div className="p-6 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gov-primary to-emerald-600 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-gov-bg font-bold text-sm">shield</span>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-xs font-bold text-white">Lic. Sosimo Lopez</span>
-                        <span className="text-[10px] text-gov-grey">Alcalde</span>
+                    <h1 className="text-xl font-bold tracking-tight text-white">GOVERNIA</h1>
+                </div>
+
+                <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+                    {menuItems.map((item) => {
+                        const isActive = pathname.startsWith(item.href);
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setIsOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${isActive
+                                    ? "bg-gov-primary text-gov-bg shadow-[0_0_15px_rgba(27,218,91,0.3)] font-bold"
+                                    : "text-gov-grey hover:bg-gov-light hover:text-white"
+                                    }`}
+                            >
+                                <span className="material-symbols-outlined">{item.icon}</span>
+                                {item.name}
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                <div className="p-4 border-t border-gov-light">
+                    <div className="flex items-center gap-3 px-4 py-2">
+                        <div className="w-8 h-8 rounded-full bg-gov-light flex items-center justify-center text-xs font-bold text-gov-primary border border-gov-primary/20">
+                            SL
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-white">Lic. Sosimo Lopez</span>
+                            <span className="text-[10px] text-gov-grey">Alcalde</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </aside>
+            </aside>
+        </>
     );
 }
