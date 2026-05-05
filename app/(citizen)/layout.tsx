@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { supabase } from "@/app/supabase";
 
 export default function CitizenLayout({
     children,
@@ -10,6 +12,18 @@ export default function CitizenLayout({
 }) {
     const pathname = usePathname();
     const isActive = (path: string) => pathname === path;
+
+    const [userAvatar, setUserAvatar] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                setUserAvatar(session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || null);
+            }
+        };
+        fetchUser();
+    }, []);
 
     return (
         <div className="min-h-screen w-full bg-gov-bg flex flex-col items-center relative overflow-x-hidden">
@@ -57,8 +71,12 @@ export default function CitizenLayout({
                 <Link href="/citizen/procedures" className={`text-sm font-bold hover:text-gov-primary transition-colors ${isActive('/citizen/procedures') ? 'text-gov-primary' : 'text-white'}`}>Trámites</Link>
                 <div className="w-px h-4 bg-gov-light mx-2"></div>
                 <Link href="/citizen/profile" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gov-light overflow-hidden">
-                        <img src="https://i.pravatar.cc/100?img=12" alt="Avatar" className="w-full h-full object-cover" />
+                    <div className="w-8 h-8 rounded-full bg-gov-light overflow-hidden flex items-center justify-center">
+                        {userAvatar ? (
+                            <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                            <span className="material-symbols-outlined text-gov-grey text-xl">person</span>
+                        )}
                     </div>
                 </Link>
             </div>

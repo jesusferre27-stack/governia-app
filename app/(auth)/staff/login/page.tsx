@@ -41,12 +41,12 @@ export default function StaffLoginPage() {
             }}
         >
             {/* Top Brand */}
-            <h1 className="text-3xl font-black text-[#22c55e] tracking-tight mb-8 drop-shadow-[0_0_15px_rgba(34,197,94,0.3)] animate-in slide-in-from-top-4 duration-700">
+            <h1 className="text-3xl font-black text-[#22c55e] tracking-tight mb-8 drop-shadow-[0_0_15px_rgba(34,197,94,0.3)] animate-fade-up duration-700">
                 GOVERNIA
             </h1>
 
             <div
-                className="w-full max-w-[400px] rounded-3xl p-8 md:p-10 flex flex-col relative z-10 animate-in zoom-in duration-500"
+                className="w-full max-w-[400px] rounded-3xl p-8 md:p-10 flex flex-col relative z-10 animate-fade-in duration-500"
                 style={{
                     background: 'rgba(255,255,255,0.06)',
                     backdropFilter: 'blur(14px)',
@@ -56,9 +56,15 @@ export default function StaffLoginPage() {
             >
                 {/* Card Header Institutional */}
                 <div className="flex flex-col items-center mb-8 text-center">
-                    <img src="/logo-soteapan.png" alt="Soteapan" className="h-7 w-auto object-contain mb-4 opacity-90 brightness-150" />
+                    <div
+                      className="h-16 w-36 flex flex-col items-center justify-center rounded-xl border border-dashed border-white/20 bg-white/5 gap-1 mb-4 cursor-pointer hover:border-white/30 transition-colors group"
+                      title="Aquí va el logo de tu municipio"
+                    >
+                      <span className="material-symbols-outlined text-2xl text-white/30 group-hover:text-white/50 transition-colors">account_balance</span>
+                      <span className="text-white/20 text-[8px] uppercase tracking-widest group-hover:text-white/35 transition-colors">Tu municipio</span>
+                    </div>
                     <h2 className="text-2xl font-bold text-white mb-1">Acceso de Funcionarios</h2>
-                    <p className="text-slate-400 text-sm font-medium">Sistema municipal • Ayuntamiento de Soteapan</p>
+                    <p className="text-slate-400 text-sm font-medium">Sistema municipal • Gobierno Digital</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6 flex-1">
@@ -71,7 +77,7 @@ export default function StaffLoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full bg-white/[0.06] border border-white/10 rounded-2xl pl-12 pr-4 py-3.5 text-white text-base focus:border-[#22c55e]/50 focus:ring-4 focus:ring-[#22c55e]/10 focus:outline-none transition-all placeholder-white/20"
-                                placeholder="funcionario@soteapan.gob.mx"
+                                placeholder="funcionario@municipio.gob.mx"
                                 required
                             />
                         </div>

@@ -1,68 +1,169 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/app/supabase";
+import { timeAgo } from "@/lib/date";
 
-const allIncidents = [
-    { id: "INC-1234", type: "Vandalismo", title: "Graffiti en Palacio Municipal", location: "Colonia Centro", date: "Hace 2h", status: "En Progreso", urgency: "Alta" },
-    { id: "INC-1235", type: "Disturbio Público", title: "Ruido excesivo vecinal", location: "Colonia Condesa", date: "Hace 4h", status: "Resuelto", urgency: "Baja" },
-    { id: "INC-1232", type: "Robo Infraestructura", title: "Robo de luminaria", location: "Colonia Polanco", date: "Ayer", status: "Reportado", urgency: "Media" },
-    { id: "INC-1230", type: "Queja Vecinal", title: "Fiesta no autorizada", location: "Colonia Juárez", date: "Hace 2 días", status: "Resuelto", urgency: "Baja" },
-    { id: "INC-1229", type: "Falla Eléctrica", title: "Apagón en calle principal", location: "Colonia Roma", date: "Hace 10 min", status: "Reportado", urgency: "Alta" },
-];
+interface Report {
+    id: string;
+    folio: string;
+    category: string;
+    description: string;
+    address: string | null;
+    status: string;
+    priority: string;
+    created_at: string;
+    departments: { name: string; icon: string; color: string } | null;
+    report_photos: { file_url: string }[];
+}
+
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
+    nuevo:       { label: "Nuevo",      bg: "bg-blue-500/10",    text: "text-blue-400",    border: "border-l-blue-500"    },
+    asignado:    { label: "Asignado",   bg: "bg-purple-500/10",  text: "text-purple-400",  border: "border-l-purple-500"  },
+    en_progreso: { label: "En Proceso", bg: "bg-amber-500/10",   text: "text-amber-400",   border: "border-l-amber-500"   },
+    resuelto:    { label: "Resuelto",   bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-l-emerald-500" },
+    rechazado:   { label: "Rechazado",  bg: "bg-red-500/10",     text: "text-red-400",     border: "border-l-red-500"     },
+};
+
+const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
+    baja:    { label: "Baja",    color: "text-slate-400"  },
+    media:   { label: "Media",   color: "text-amber-400"  },
+    alta:    { label: "Alta",    color: "text-orange-400" },
+    critica: { label: "Crítica", color: "text-red-400"    },
+};
+
+
+
+import IncidentDrawer from "@/components/IncidentDrawer";
+
+import { useSearchParams } from "next/navigation";
 
 export default function IncidentsPage() {
+    const searchParams = useSearchParams();
+    const deptParam = searchParams.get("dept");
+    
+    const [reports, setReports] = useState<Report[]>([]);
+    const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("Todos");
+    const [search, setSearch] = useState(deptParam || "");
+    const [updating, setUpdating] = useState<string | null>(null);
+    const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
-    const filteredIncidents = allIncidents.filter(inc => {
-        if (filter === "Todos") return true;
-        if (filter === "Críticos") return inc.urgency === "Alta";
-        if (filter === "Hoy") return inc.date.includes("Hace") || inc.date === "Hoy";
-        if (filter === "Sin Asignar") return inc.status === "Reportado";
-        return true;
+    useEffect(() => {
+        if (deptParam) {
+            setSearch(deptParam);
+        }
+    }, [deptParam]);
+
+    useEffect(() => {
+        fetchReports();
+        // Suscripción en tiempo real
+        const channel = supabase
+            .channel("reports-realtime")
+            .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, () => {
+                fetchReports();
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, []);
+
+    const fetchReports = async () => {
+        const { data, error } = await supabase
+            .from("reports")
+            .select(`
+                id, folio, category, description, address, status, priority, created_at, latitude, longitude, department_id,
+                departments (name, icon, color),
+                report_photos (file_url)
+            `)
+            .order("created_at", { ascending: false })
+            .limit(100);
+
+        if (!error && data) setReports(data as any[]);
+        setLoading(false);
+        
+        // Update selected report if it exists and is in the list
+        if (selectedReport) {
+            const updated = (data as any[]).find(r => r.id === selectedReport.id);
+            if (updated) setSelectedReport(updated);
+        }
+    };
+
+    const updateStatus = async (reportId: string, newStatus: string) => {
+        setUpdating(reportId);
+        await supabase
+            .from("reports")
+            .update({ status: newStatus, ...(newStatus === "resuelto" ? { resolved_at: new Date().toISOString() } : {}) })
+            .eq("id", reportId);
+        await fetchReports();
+        setUpdating(null);
+    };
+
+    const filtered = reports.filter(r => {
+        const matchFilter =
+            filter === "Todos"      ? true :
+            filter === "Críticos"   ? r.priority === "alta" || r.priority === "critica" :
+            filter === "Nuevos"     ? r.status === "nuevo" :
+            filter === "En Proceso" ? r.status === "en_progreso" || r.status === "asignado" :
+            filter === "Resueltos"  ? r.status === "resuelto" : true;
+
+        const searchLower = search.toLowerCase();
+        const matchSearch = search === "" ||
+            r.folio.toLowerCase().includes(searchLower) ||
+            r.category.toLowerCase().includes(searchLower) ||
+            (r.description || "").toLowerCase().includes(searchLower) ||
+            (r.address || "").toLowerCase().includes(searchLower) ||
+            (r.departments?.name || "").toLowerCase().includes(searchLower);
+
+        return matchFilter && matchSearch;
     });
+
+    const kpis = {
+        total:    reports.length,
+        nuevos:   reports.filter(r => r.status === "nuevo").length,
+        proceso:  reports.filter(r => r.status === "en_progreso" || r.status === "asignado").length,
+        resueltos:reports.filter(r => r.status === "resuelto").length,
+        criticos: reports.filter(r => r.priority === "critica" || r.priority === "alta").length,
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
 
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-3xl font-bold text-white">Incidentes</h2>
-                    <p className="text-gov-grey">Control operativo y priorización de reportes.</p>
+                    <h2 className="text-3xl font-bold text-white">Incidentes y Reportes</h2>
+                    <p className="text-gov-grey">Reportes ciudadanos en tiempo real • Se actualiza automáticamente</p>
                 </div>
-                <button className="bg-gov-primary hover:bg-emerald-400 text-gov-bg font-bold px-4 py-2 rounded-lg text-sm shadow-[0_0_15px_rgba(27,218,91,0.4)] flex items-center gap-2 transition-all">
-                    <span className="material-symbols-outlined">add_circle</span>
-                    Crear Ticket
-                </button>
+                <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-gov-primary animate-pulse"></div>
+                    <span className="text-gov-grey text-xs">En vivo</span>
+                </div>
             </div>
 
-            {/* KPI Summary Strip */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* KPI Strip */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
-                    { label: "Incidentes Críticos", val: "3", icon: "warning", color: "text-gov-danger" },
-                    { label: "En Progreso", val: "12", icon: "pending", color: "text-amber-500" },
-                    { label: "Resueltos Hoy", val: "45", icon: "check_circle", color: "text-emerald-500" },
-                    { label: "Tiempo Promedio", val: "45 min", icon: "timer", color: "text-blue-400" },
+                    { label: "Total Reportes",  val: kpis.total,    icon: "inbox",        color: "text-white"         },
+                    { label: "Nuevos",           val: kpis.nuevos,   icon: "fiber_new",    color: "text-blue-400"      },
+                    { label: "En Proceso",       val: kpis.proceso,  icon: "pending",      color: "text-amber-400"     },
+                    { label: "Resueltos",        val: kpis.resueltos,icon: "check_circle", color: "text-emerald-400"   },
+                    { label: "Alta Prioridad",   val: kpis.criticos, icon: "warning",      color: "text-red-400"       },
                 ].map((stat, i) => (
                     <div key={i} className="bg-gov-surface border border-gov-light p-4 rounded-xl flex items-center justify-between">
                         <div>
                             <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">{stat.label}</p>
-                            <h3 className="text-2xl font-bold text-white">{stat.val}</h3>
+                            <h3 className={`text-2xl font-bold ${stat.color}`}>{loading ? "—" : stat.val}</h3>
                         </div>
-                        <div className={`p-2 rounded-lg bg-gov-light/30 ${stat.color}`}>
-                            <span className="material-symbols-outlined">{stat.icon}</span>
-                        </div>
+                        <span className={`material-symbols-outlined text-2xl ${stat.color} opacity-70`}>{stat.icon}</span>
                     </div>
                 ))}
             </div>
 
-            {/* Main Content */}
+            {/* Filters + Search */}
             <div className="bg-gov-surface border border-gov-light rounded-2xl p-6 min-h-[500px]">
-
-                {/* Filters & Search */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                    <div className="bg-gov-bg p-1 rounded-lg border border-gov-light flex overflow-x-auto max-w-full">
-                        {["Todos", "Críticos", "Hoy", "Sin Asignar"].map((f) => (
+                    <div className="bg-gov-bg p-1 rounded-lg border border-gov-light flex overflow-x-auto max-w-full gap-1 no-scrollbar">
+                        {["Todos", "Nuevos", "Críticos", "En Proceso", "Resueltos"].map((f) => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}
@@ -72,74 +173,142 @@ export default function IncidentsPage() {
                             </button>
                         ))}
                     </div>
-
                     <div className="relative w-full md:w-64">
                         <span className="material-symbols-outlined absolute left-3 top-2.5 text-gov-grey text-sm">search</span>
-                        <input type="text" placeholder="Buscar..." className="w-full bg-gov-bg border border-gov-light rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-gov-grey focus:border-gov-primary outline-none transition-colors" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar por folio, categoría..."
+                            className="w-full bg-gov-bg border border-gov-light rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-gov-grey focus:border-gov-primary outline-none transition-colors"
+                        />
                     </div>
                 </div>
 
-                {/* Incidents List */}
-                <div className="space-y-3">
-                    {filteredIncidents.map((inc) => (
-                        <Link href={`/staff/incidents/${inc.id}`} key={inc.id}>
-                            <div className={`group relative bg-gov-bg border border-gov-light rounded-xl p-4 hover:border-gov-primary/50 transition-all cursor-pointer overflow-hidden ${inc.urgency === "Alta" ? "border-l-4 border-l-gov-danger" : "border-l-4 border-l-gov-light"}`}>
+                {/* Lista */}
+                {loading ? (
+                    <div className="space-y-3">
+                        {[1,2,3,4].map(i => (
+                            <div key={i} className="bg-gov-bg border border-gov-light rounded-xl p-4 h-20 animate-pulse" />
+                        ))}
+                    </div>
+                ) : filtered.length === 0 ? (
+                    <div className="text-center py-16">
+                        <span className="material-symbols-outlined text-5xl text-gov-grey/30 mb-4 block">inbox</span>
+                        <p className="text-gov-grey">
+                            {reports.length === 0 ? "No hay reportes ciudadanos aún." : "Sin resultados para este filtro."}
+                        </p>
+                        {reports.length === 0 && (
+                            <p className="text-gov-grey/60 text-sm mt-2">Los reportes de ciudadanos aparecerán aquí en tiempo real.</p>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {filtered.map((rep) => {
+                            const statusCfg = STATUS_CONFIG[rep.status] || STATUS_CONFIG["nuevo"];
+                            const priorityCfg = PRIORITY_CONFIG[rep.priority] || PRIORITY_CONFIG["media"];
+                            const photo = rep.report_photos?.[0]?.file_url;
+                            const isUpdating = updating === rep.id;
 
-                                {/* Hover Actions Overlay (Ghost Buttons) */}
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                    <button className="bg-gov-surface border border-gov-light text-gov-grey hover:text-white hover:border-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
-                                        Asignar
-                                    </button>
-                                    <button className="bg-gov-primary/10 text-gov-primary px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
-                                        Ver detalle <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                                    </button>
-                                </div>
-
-                                <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                        {/* Header Row */}
-                                        <div className="flex items-center gap-3 mb-1">
-                                            <span className="text-white font-bold text-sm tracking-wide">{inc.type}</span>
-                                            <span className="text-[10px] text-gov-grey bg-gov-surface px-1.5 py-0.5 rounded border border-gov-light/50">{inc.id}</span>
-                                            {inc.urgency === "Alta" && (
-                                                <span className="flex items-center gap-1 text-gov-danger text-[10px] font-bold border border-gov-danger/30 px-1.5 py-0.5 rounded bg-gov-danger/10">
-                                                    <span className="material-symbols-outlined text-[10px]">priority_high</span> URGENTE
+                            return (
+                                <div
+                                    key={rep.id}
+                                    onClick={() => setSelectedReport(rep)}
+                                    className={`group relative bg-gov-bg border border-gov-light ${statusCfg.border} border-l-4 rounded-xl p-4 hover:border-gov-primary transition-all overflow-hidden cursor-pointer active:scale-[0.99]`}
+                                >
+                                    <div className="flex gap-4">
+                                        {/* Foto thumbnail */}
+                                        {photo ? (
+                                            <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-gov-light">
+                                                <img src={photo} alt="foto" className="w-full h-full object-cover" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-16 h-16 rounded-xl bg-gov-surface border border-gov-light flex items-center justify-center shrink-0">
+                                                <span className="material-symbols-outlined text-gov-grey text-2xl">
+                                                    {(rep as any).departments?.icon || "report"}
                                                 </span>
+                                            </div>
+                                        )}
+
+                                        <div className="flex-1 min-w-0">
+                                            {/* Row 1 */}
+                                            <div className="flex items-center flex-wrap gap-2 mb-1">
+                                                <span className="text-gov-primary font-mono text-xs font-bold">{rep.folio}</span>
+                                                <span className="text-[10px] bg-gov-surface text-gov-grey px-2 py-0.5 rounded border border-gov-light/50">{rep.category}</span>
+                                                {(rep as any).departments && (
+                                                    <span className="text-[10px] px-2 py-0.5 rounded border border-gov-light/50" style={{ color: (rep as any).departments.color }}>
+                                                        {(rep as any).departments.name}
+                                                    </span>
+                                                )}
+                                                <span className={`text-[10px] font-bold ml-auto ${priorityCfg.color}`}>
+                                                    {priorityCfg.label}
+                                                </span>
+                                            </div>
+
+                                            {/* Descripción */}
+                                            <p className="text-white text-sm font-medium truncate">
+                                                {rep.description || "(Sin descripción)"}
+                                            </p>
+
+                                            {/* Meta */}
+                                            <div className="flex items-center gap-3 text-xs text-gov-grey mt-1">
+                                                <span className="flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                                    {timeAgo(rep.created_at)}
+                                                </span>
+                                                {rep.address && (
+                                                    <span className="flex items-center gap-1 truncate">
+                                                        <span className="material-symbols-outlined text-[12px]">location_on</span>
+                                                        {rep.address}
+                                                    </span>
+                                                )}
+                                                {rep.report_photos?.length > 0 && (
+                                                    <span className="flex items-center gap-1 text-gov-primary">
+                                                        <span className="material-symbols-outlined text-[12px]">photo</span>
+                                                        {rep.report_photos.length}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Status + acciones */}
+                                        <div className="flex flex-col items-end gap-2 shrink-0">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${statusCfg.bg} ${statusCfg.text}`}>
+                                                {statusCfg.label}
+                                            </span>
+
+                                            {/* Cambio rápido de estado */}
+                                            {rep.status !== "resuelto" && (
+                                                <div className="hidden md:block">
+                                                    <select
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onChange={(e) => e.target.value && updateStatus(rep.id, e.target.value)}
+                                                        disabled={isUpdating}
+                                                        defaultValue=""
+                                                        className="text-[10px] bg-gov-surface border border-gov-light rounded-lg px-2 py-1 text-gov-grey hover:border-gov-primary transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                                    >
+                                                        <option value="" disabled>Estado</option>
+                                                        {rep.status !== "asignado"    && <option value="asignado">Asignar</option>}
+                                                        {rep.status !== "en_progreso" && <option value="en_progreso">En proceso</option>}
+                                                        <option value="resuelto">Resuelto</option>
+                                                        <option value="rechazado">Rechazar</option>
+                                                    </select>
+                                                </div>
                                             )}
                                         </div>
-
-                                        {/* Title */}
-                                        <h3 className="text-gov-grey text-sm mb-2 group-hover:text-white transition-colors">{inc.title}</h3>
-
-                                        {/* Metadata */}
-                                        <div className="flex items-center gap-4 text-xs text-gov-grey">
-                                            <span className="flex items-center gap-1 group-hover:text-gov-primary transition-colors">
-                                                <span className="material-symbols-outlined text-sm">location_on</span>
-                                                {inc.location}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-sm">schedule</span>
-                                                {inc.date}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Status Badge (Right aligned, fades on hover to make room for actions on mobile/desktop) */}
-                                    <div className="group-hover:opacity-0 transition-opacity duration-300">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${inc.status === "Resuelto" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                                            inc.status === "En Progreso" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                                                "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                                            }`}>
-                                            {inc.status}
-                                        </span>
                                     </div>
                                 </div>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
+            <IncidentDrawer 
+                report={selectedReport} 
+                onClose={() => setSelectedReport(null)}
+                onRefresh={fetchReports}
+            />
         </div>
     );
 }

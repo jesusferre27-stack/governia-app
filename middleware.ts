@@ -1,8 +1,12 @@
-import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(req: NextRequest) {
-  let res = NextResponse.next();
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,42 +14,53 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll() {
-          return req.cookies.getAll();
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          res = NextResponse.next();
-          cookiesToSet.forEach(({ name, value, options }) => {
-            res.cookies.set(name, value, options);
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
           });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
         },
       },
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
 
-  const pathname = req.nextUrl.pathname;
+  const url = request.nextUrl.clone();
+  const pathname = url.pathname;
 
-  const isCitizenLogin = pathname.startsWith("/citizen/login");
-  const isStaffLogin = pathname.startsWith("/staff/login");
+  // 1. Permitir siempre el callback de auth
+  if (pathname.startsWith("/auth/callback")) return response;
 
-  if (pathname.startsWith("/citizen") && !isCitizenLogin && !session) {
-    const url = req.nextUrl.clone();
+  // 2. Permitir siempre las páginas de login para evitar bucles
+  if (pathname.includes("/login")) return response;
+
+  // 3. Proteger rutas de ciudadano
+  if (pathname.startsWith("/citizen") && !session) {
     url.pathname = "/citizen/login";
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/staff") && !isStaffLogin && !session) {
-    const url = req.nextUrl.clone();
+  // 4. Proteger rutas de staff
+  if (pathname.startsWith("/staff") && !session) {
     url.pathname = "/staff/login";
     return NextResponse.redirect(url);
   }
 
-  return res;
+  return response;
 }
 
 export const config = {
-  matcher: ["/citizen/:path*", "/staff/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

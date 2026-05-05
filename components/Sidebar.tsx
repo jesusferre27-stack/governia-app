@@ -1,23 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { supabase } from "@/app/supabase";
 
 const menuItems = [
-    { name: "Dashboard", href: "/staff/dashboard", icon: "dashboard" },
-    { name: "Incidentes", href: "/staff/incidents", icon: "warning" },
-    { name: "Obras Públicas", href: "/staff/projects", icon: "engineering" },
-    { name: "Servicios", href: "/staff/services", icon: "assignment" },
-    { name: "Social", href: "/staff/social", icon: "sentiment_satisfied" },
-    { name: "Usuarios", href: "/staff/users", icon: "group" },
-    { name: "Configuración", href: "/staff/settings", icon: "settings" },
+    { name: "Dashboard",    href: "/staff/dashboard", icon: "dashboard"           },
+    { name: "Incidentes",   href: "/staff/incidents", icon: "warning"             },
+    { name: "Cuadrillas",   href: "/staff/crews",     icon: "groups"              },
+    { name: "Obras Públicas",href: "/staff/projects", icon: "engineering"         },
+    { name: "Servicios",    href: "/staff/services",  icon: "assignment"          },
+    { name: "Social",       href: "/staff/social",    icon: "sentiment_satisfied" },
+    { name: "Usuarios",     href: "/staff/users",     icon: "group"               },
+    { name: "Configuración",href: "/staff/settings",  icon: "settings"            },
 ];
 
 export default function Sidebar() {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
+    const [userName, setUserName] = useState("Cargando...");
+    const [userRole, setUserRole] = useState("...");
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                // Check if it's the specific hardcoded email owner or a generic one
+                const email = user.email || "";
+                if (email.includes("jesusferre")) {
+                    setUserName("Lic. Sosimo Lopez");
+                    setUserRole("Alcalde");
+                } else {
+                    // Try to get name from metadata
+                    const metaName = user.user_metadata?.full_name;
+                    setUserName(metaName || "Funcionario");
+                    setUserRole("Staff");
+                }
+            } else {
+                setUserName("Invitado");
+                setUserRole("Acceso limitado");
+            }
+        };
+        getUser();
+    }, []);
 
     return (
         <>
@@ -74,11 +101,11 @@ export default function Sidebar() {
                 <div className="p-4 border-t border-gov-light">
                     <div className="flex items-center gap-3 px-4 py-2">
                         <div className="w-8 h-8 rounded-full bg-gov-light flex items-center justify-center text-xs font-bold text-gov-primary border border-gov-primary/20">
-                            SL
+                            {userName.substring(0, 2).toUpperCase()}
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-xs font-bold text-white">Lic. Sosimo Lopez</span>
-                            <span className="text-[10px] text-gov-grey">Alcalde</span>
+                            <span className="text-xs font-bold text-white truncate max-w-[140px]">{userName}</span>
+                            <span className="text-[10px] text-gov-grey">{userRole}</span>
                         </div>
                     </div>
                 </div>

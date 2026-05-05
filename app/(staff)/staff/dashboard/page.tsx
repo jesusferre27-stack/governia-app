@@ -1,207 +1,325 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/app/supabase";
+import { timeAgo } from "@/lib/date";
+import IncidentDrawer from "@/components/IncidentDrawer";
+import InviteDirectorModal from "@/components/InviteDirectorModal";
+
+interface RecentReport {
+    id: string;
+    folio: string;
+    category: string;
+    status: string;
+    priority: string;
+    created_at: string;
+    address: string | null;
+    description: string;
+    latitude?: number;
+    longitude?: number;
+    department_id?: string;
+    departments: { name: string; icon: string; color: string } | null;
+    report_photos: { file_url: string }[];
+}
+
+interface KPIs {
+    total: number;
+    nuevos: number;
+    en_proceso: number;
+    resueltos: number;
+    criticos: number;
+    avgResponseHours: number | null;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+    nuevo: "Nuevo", asignado: "Asignado", en_progreso: "En Proceso",
+    resuelto: "Resuelto", rechazado: "Rechazado",
+};
+const PRIORITY_COLOR: Record<string, string> = {
+    baja: "text-slate-400", media: "text-amber-400", alta: "text-orange-400", critica: "text-red-400",
+};
 
 export default function DashboardPage() {
+    const [kpis, setKpis] = useState<KPIs>({ total: 0, nuevos: 0, en_proceso: 0, resueltos: 0, criticos: 0, avgResponseHours: null });
+    const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [userName, setUserName] = useState("Funcionario");
+    const [selectedReport, setSelectedReport] = useState<RecentReport | null>(null);
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        // ... (auth logic stays the same)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const email = user.email || "";
+            if (email.includes("jesusferre")) {
+                setUserName("Lic. Sosimo Lopez");
+            } else {
+                setUserName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Funcionario");
+            }
+        }
+
+        // KPIs
+        const { data: allReports } = await supabase
+            .from("reports")
+            .select("status, priority, created_at, resolved_at");
+
+        if (allReports) {
+            const total = allReports.length;
+            const nuevos = allReports.filter(r => r.status === "nuevo").length;
+            const en_proceso = allReports.filter(r => r.status === "en_progreso" || r.status === "asignado").length;
+            const resueltos = allReports.filter(r => r.status === "resuelto").length;
+            const criticos = allReports.filter(r => r.priority === "alta" || r.priority === "critica").length;
+
+            const resolved = allReports.filter(r => r.resolved_at && r.created_at);
+            let avgHours: number | null = null;
+            if (resolved.length > 0) {
+                const totalMs = resolved.reduce((sum, r) => {
+                    return sum + (new Date(r.resolved_at!).getTime() - new Date(r.created_at).getTime());
+                }, 0);
+                avgHours = Math.round(totalMs / resolved.length / 3600000 * 10) / 10;
+            }
+            setKpis({ total, nuevos, en_proceso, resueltos, criticos, avgResponseHours: avgHours });
+        }
+
+        // Últimos 5 reportes enriquecidos para el drawer
+        const { data: recent } = await supabase
+            .from("reports")
+            .select(`
+                id, folio, category, status, priority, created_at, address, description, 
+                latitude, longitude, department_id,
+                departments(name, icon, color),
+                report_photos(file_url)
+            `)
+            .order("created_at", { ascending: false })
+            .limit(5);
+
+        if (recent) setRecentReports(recent as any[]);
+        setLoading(false);
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
 
             {/* Header */}
-            <div className="flex justify-between items-end">
+            <div className="flex justify-between items-end flex-wrap gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-white mb-1">Panel de Control</h2>
-                    <p className="text-gov-grey font-medium">Resumen operativo y alertas críticas del municipio</p>
+                    <p className="text-gov-grey font-medium">
+                        Bienvenido, <span className="text-white font-bold">{userName}</span> • Resumen operativo en tiempo real
+                    </p>
                 </div>
-                <div className="flex gap-4">
-                    <button className="bg-gov-surface hover:bg-gov-light text-white px-4 py-2 rounded-lg text-sm font-medium border border-gov-light transition-colors flex items-center gap-2">
-                        <span className="material-symbols-outlined text-lg">calendar_today</span>
-                        Oct 26, 2023
-                    </button>
-                    <button className="bg-gov-primary hover:bg-emerald-400 text-gov-bg px-4 py-2 rounded-lg text-sm font-bold shadow-[0_0_15px_rgba(27,218,91,0.4)] transition-all flex items-center gap-2">
-                        <span className="material-symbols-outlined text-lg">add</span>
-                        Nueva Tarea
-                    </button>
+                <div className="flex gap-3">
+                    <Link href="/staff/incidents">
+                        <button className="bg-gov-surface hover:bg-gov-light text-white px-4 py-2 rounded-lg text-sm font-medium border border-gov-light transition-colors flex items-center gap-2">
+                            <span className="material-symbols-outlined text-lg">warning</span>
+                            Ver Incidentes
+                        </button>
+                    </Link>
+                    <Link href="/staff/crews">
+                        <button className="bg-gov-primary hover:bg-emerald-400 text-gov-bg px-4 py-2 rounded-lg text-sm font-bold shadow-[0_0_15px_rgba(27,218,91,0.4)] transition-all flex items-center gap-2">
+                            <span className="material-symbols-outlined text-lg">groups</span>
+                            Cuadrillas
+                        </button>
+                    </Link>
                 </div>
             </div>
 
-            {/* KPI Grid - Top Tier */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* KPI 1 */}
-                <div className="bg-gov-surface border border-gov-light p-6 rounded-2xl relative overflow-hidden group hover:border-gov-primary/30 transition-all">
+            {/* KPI Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-gov-surface border border-gov-light p-6 rounded-2xl group hover:border-gov-primary/30 transition-all">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">Nuevos Reportes</p>
-                            <h3 className="text-3xl font-bold text-white mt-2 group-hover:text-gov-primary transition-colors">124</h3>
+                            <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">Reportes Totales</p>
+                            <h3 className="text-3xl font-bold text-white mt-2 group-hover:text-gov-primary transition-colors">
+                                {loading ? "—" : kpis.total}
+                            </h3>
                         </div>
                         <div className="p-2 bg-gov-light/50 rounded-lg">
                             <span className="material-symbols-outlined text-gov-primary">inbox</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs">
-                        <span className="text-gov-primary font-bold">+5.1%</span>
-                        <span className="text-gov-grey">vs semana pasada</span>
+                        <span className="text-blue-400 font-bold">{loading ? "—" : kpis.nuevos}</span>
+                        <span className="text-gov-grey">nuevos sin atender</span>
                     </div>
                 </div>
 
-                {/* KPI 2 - SLA Breaches */}
-                <div className="bg-gov-surface border border-gov-light p-6 rounded-2xl relative overflow-hidden group hover:border-gov-danger/30 transition-all">
+                <div className="bg-gov-surface border border-gov-light p-6 rounded-2xl group hover:border-gov-danger/30 transition-all">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">SLA Breaches</p>
-                            <h3 className="text-3xl font-bold text-white mt-2 group-hover:text-gov-danger transition-colors">12</h3>
+                            <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">Alta Prioridad</p>
+                            <h3 className="text-3xl font-bold text-white mt-2 group-hover:text-gov-danger transition-colors">
+                                {loading ? "—" : kpis.criticos}
+                            </h3>
                         </div>
                         <div className="p-2 bg-gov-light/50 rounded-lg">
-                            <span className="material-symbols-outlined text-gov-danger">timer_off</span>
+                            <span className="material-symbols-outlined text-gov-danger">priority_high</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs">
-                        <span className="bg-gov-danger/10 text-gov-danger px-2 py-0.5 rounded font-bold">2 CRÍTICOS</span>
-                        <span className="text-gov-grey">hoy</span>
+                        {kpis.criticos > 0 ? (
+                            <span className="bg-gov-danger/10 text-gov-danger px-2 py-0.5 rounded font-bold">REQUIEREN ATENCIÓN</span>
+                        ) : (
+                            <span className="text-emerald-400 font-bold">Sin emergencias</span>
+                        )}
                     </div>
                 </div>
 
-                {/* KPI 3 - Obras Atrasadas */}
-                <div className="bg-gov-surface border border-gov-light p-6 rounded-2xl relative overflow-hidden group hover:border-gov-accent/30 transition-all">
+                <div className="bg-gov-surface border border-gov-light p-6 rounded-2xl group hover:border-gov-accent/30 transition-all">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">Obras Atrasadas</p>
-                            <h3 className="text-3xl font-bold text-white mt-2 group-hover:text-gov-accent transition-colors">8</h3>
+                            <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">En Proceso</p>
+                            <h3 className="text-3xl font-bold text-white mt-2 group-hover:text-gov-accent transition-colors">
+                                {loading ? "—" : kpis.en_proceso}
+                            </h3>
                         </div>
                         <div className="p-2 bg-gov-light/50 rounded-lg">
-                            <span className="material-symbols-outlined text-gov-accent">construction</span>
+                            <span className="material-symbols-outlined text-gov-accent">pending</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs">
-                        <span className="text-gov-grey">Requieren atención</span>
+                        <span className="text-emerald-400 font-bold">{loading ? "—" : kpis.resueltos}</span>
+                        <span className="text-gov-grey">resueltos en total</span>
                     </div>
                 </div>
 
-                {/* KPI 4 - Response Time (NEW) */}
-                <div className="bg-gov-surface border border-gov-light p-6 rounded-2xl relative overflow-hidden group hover:border-blue-400/30 transition-all">
+                <div className="bg-gov-surface border border-gov-light p-6 rounded-2xl group hover:border-blue-400/30 transition-all">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">T. Respuesta Promedio</p>
-                            <h3 className="text-3xl font-bold text-white mt-2 text-blue-400">6.4h</h3>
+                            <p className="text-gov-grey text-[10px] font-bold uppercase tracking-wider">T. Respuesta Prom.</p>
+                            <h3 className="text-3xl font-bold text-blue-400 mt-2">
+                                {loading ? "—" : kpis.avgResponseHours !== null ? `${kpis.avgResponseHours}h` : "N/D"}
+                            </h3>
                         </div>
                         <div className="p-2 bg-gov-light/50 rounded-lg">
                             <span className="material-symbols-outlined text-blue-400">speed</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs">
-                        <span className="text-emerald-400 font-bold">-1.2h</span>
-                        <span className="text-gov-grey">vs mes pasado</span>
+                        <span className="text-gov-grey">Basado en reportes resueltos</span>
                     </div>
                 </div>
             </div>
 
-            {/* AI Action Card */}
-            <div className="bg-gradient-to-r from-gov-surface to-gov-light border border-gov-light p-1 rounded-2xl shadow-lg">
-                <div className="bg-gov-bg/50 backdrop-blur-sm rounded-xl p-6 flex flex-col md:flex-row items-center gap-6">
-                    <div className="p-4 bg-amber-500/20 rounded-full shrink-0 animate-pulse">
-                        <span className="material-symbols-outlined text-amber-500 text-3xl">lightbulb</span>
+            {/* Reportes recientes + Cuadrillas acceso rápido */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                {/* Últimos Reportes */}
+                <div className="lg:col-span-2 bg-gov-surface border border-gov-light rounded-2xl p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-white font-bold text-lg">Últimos Reportes Ciudadanos</h3>
+                        <Link href="/staff/incidents" className="text-gov-primary text-xs font-bold hover:underline">Ver todos</Link>
                     </div>
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="bg-amber-500 text-gov-bg text-[10px] font-bold px-2 py-0.5 rounded uppercase">Acción Recomendada</span>
-                            <span className="text-gov-grey text-xs flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">schedule</span> Hace 10 min</span>
+
+                    {loading ? (
+                        <div className="space-y-3">
+                            {[1,2,3].map(i => <div key={i} className="h-16 bg-gov-bg rounded-xl animate-pulse" />)}
                         </div>
-                        <h3 className="text-white font-bold text-lg mb-1">Anomalía detectada en Alumbrado Público</h3>
-                        <p className="text-gray-300 text-sm">Se ha detectado un aumento anómalo del 40% en reportes en la <span className="text-white font-bold">Colonia Centro</span>. Posible falla de circuito.</p>
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                        <div className="text-right hidden md:block">
-                            <p className="text-[10px] text-gov-grey uppercase font-bold">Prioridad</p>
-                            <p className="text-amber-500 font-bold">ALTA</p>
+                    ) : recentReports.length === 0 ? (
+                        <div className="text-center py-10">
+                            <span className="material-symbols-outlined text-4xl text-gov-grey/30 mb-2 block">inbox</span>
+                            <p className="text-gov-grey text-sm">No hay reportes aún.</p>
+                            <p className="text-gov-grey/60 text-xs mt-1">Los reportes de ciudadanos aparecerán aquí.</p>
                         </div>
-                        <button className="bg-amber-500 hover:bg-amber-400 text-gov-bg font-bold px-6 py-3 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-2">
-                            <span className="material-symbols-outlined">assignment_ind</span>
-                            Asignar Cuadrilla
+                    ) : (
+                        <div className="space-y-3">
+                            {recentReports.map((rep) => {
+                                const photo = rep.report_photos?.[0]?.file_url;
+                                return (
+                                    <div 
+                                        key={rep.id} 
+                                        onClick={() => setSelectedReport(rep)}
+                                        className="bg-gov-bg border border-gov-light rounded-xl p-4 flex items-center gap-4 hover:border-gov-primary transition-all cursor-pointer active:scale-[0.99]"
+                                    >
+                                        {photo ? (
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-gov-light">
+                                                <img src={photo} alt="foto" className="w-full h-full object-cover" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-lg bg-gov-surface border border-gov-light flex items-center justify-center shrink-0">
+                                                <span className="material-symbols-outlined text-gov-grey">report</span>
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <span className="text-gov-primary font-mono text-xs">{rep.folio}</span>
+                                                <span className="text-gov-grey text-xs">•</span>
+                                                <span className="text-gov-grey text-xs">{rep.category}</span>
+                                                <span className={`text-[10px] font-bold ml-auto ${PRIORITY_COLOR[rep.priority] || ""}`}>
+                                                    {rep.priority?.toUpperCase()}
+                                                </span>
+                                            </div>
+                                            <p className="text-white text-sm font-medium truncate">
+                                                {rep.description || rep.category}
+                                            </p>
+                                            <p className="text-gov-grey text-xs">{timeAgo(rep.created_at)}</p>
+                                        </div>
+                                        <span className={`text-[10px] font-bold shrink-0 ${
+                                            rep.status === "nuevo" ? "text-blue-400" :
+                                            rep.status === "resuelto" ? "text-emerald-400" :
+                                            "text-amber-400"
+                                        }`}>
+                                            {STATUS_LABEL[rep.status] || rep.status}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* Acceso rápido a secciones */}
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-white font-bold text-lg">Acceso Rápido</h3>
+                        <button 
+                            onClick={() => setIsInviteModalOpen(true)}
+                            className="bg-gov-primary/10 border border-gov-primary/30 text-gov-primary px-3 py-1 rounded-lg text-[10px] font-bold hover:bg-gov-primary hover:text-gov-bg transition-all flex items-center gap-1"
+                        >
+                            <span className="material-symbols-outlined text-sm">person_add</span>
+                            INVITAR DIRECTOR
                         </button>
                     </div>
+
+                    {[
+                        { label: "Cuadrillas",     icon: "groups",      href: "/staff/crews",      color: "text-gov-primary", desc: "Estado de departamentos" },
+                        { label: "Incidentes",      icon: "warning",     href: "/staff/incidents",  color: "text-amber-400",   desc: `${kpis.nuevos} sin atender` },
+                        { label: "Obras Públicas",  icon: "engineering", href: "/staff/projects",   color: "text-blue-400",    desc: "Proyectos activos" },
+                        { label: "Servicios",       icon: "assignment",  href: "/staff/services",   color: "text-purple-400",  desc: "Trámites ciudadanos" },
+                        { label: "Usuarios",        icon: "group",       href: "/staff/users",      color: "text-gov-grey",    desc: "Gestión de usuarios" },
+                    ].map((item, i) => (
+                        <Link key={i} href={item.href} className="group">
+                            <div className="bg-gov-surface border border-gov-light rounded-xl p-4 flex items-center gap-4 hover:border-gov-primary/30 transition-all cursor-pointer">
+                                <div className="w-10 h-10 rounded-xl bg-gov-bg flex items-center justify-center border border-gov-light group-hover:border-gov-primary/30 transition-colors">
+                                    <span className={`material-symbols-outlined ${item.color}`}>{item.icon}</span>
+                                </div>
+                                <div>
+                                    <h4 className="text-white font-bold text-sm group-hover:text-gov-primary transition-colors">{item.label}</h4>
+                                    <p className="text-gov-grey text-xs">{item.desc}</p>
+                                </div>
+                                <span className="material-symbols-outlined text-gov-grey ml-auto group-hover:translate-x-1 transition-transform text-sm">arrow_forward_ios</span>
+                            </div>
+                        </Link>
+                    ))}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Map Section - Takes 2 cols */}
-                <div className="lg:col-span-2 bg-gov-surface border border-gov-light rounded-2xl flex flex-col overflow-hidden h-[500px] relative group">
-                    <div className="absolute top-6 left-6 z-10 bg-gov-surface/90 backdrop-blur px-4 py-2 rounded-xl border border-gov-light/50 shadow-lg">
-                        <h3 className="text-white font-bold">Mapa de Calor</h3>
-                        <div className="flex items-center gap-3 text-xs mt-1">
-                            <span className="flex items-center gap-1 text-gov-danger font-bold"><span className="w-2 h-2 rounded-full bg-gov-danger"></span> 3 Críticos</span>
-                            <span className="flex items-center gap-1 text-gov-accent font-bold"><span className="w-2 h-2 rounded-full bg-gov-accent"></span> 12 Activos</span>
-                            <span className="flex items-center gap-1 text-emerald-500 font-bold"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> 45 Resueltos</span>
-                        </div>
-                    </div>
+            <IncidentDrawer 
+                report={selectedReport as any} 
+                onClose={() => setSelectedReport(null)}
+                onRefresh={loadData}
+            />
 
-                    <img src="/assets/dashboard_map.png" alt="Mapa de Incidentes" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700" />
-
-                    {/* Interactive Overlay Mock */}
-                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-gov-bg via-transparent to-transparent opacity-80"></div>
-                </div>
-
-                {/* Recent Evidence & Sentiment - Takes 1 col */}
-                <div className="space-y-6">
-
-                    {/* Visual Evidence Block */}
-                    <div className="bg-gov-surface border border-gov-light rounded-2xl p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-white font-bold flex items-center gap-2">
-                                <span className="material-symbols-outlined text-gov-primary">photo_camera</span>
-                                Evidencia Reciente
-                            </h3>
-                            <button className="text-gov-primary text-xs font-bold hover:underline">Ver todo</button>
-                        </div>
-                        <div className="space-y-3">
-                            {/* Item 1 */}
-                            <div className="relative h-32 rounded-xl overflow-hidden group cursor-pointer border border-gov-light/30">
-                                <img src="/assets/incident_pothole.png" alt="Bache" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent"></div>
-                                <div className="absolute bottom-3 left-3 w-full pr-3">
-                                    <div className="flex justify-between items-end">
-                                        <div>
-                                            <span className="bg-gov-danger text-white text-[10px] font-bold px-2 py-0.5 rounded mb-1 inline-block">CRÍTICO</span>
-                                            <p className="text-white font-bold text-sm leading-tight">Bache Profundo</p>
-                                            <p className="text-gray-300 text-xs">Av. Reforma • Hace 1h</p>
-                                        </div>
-                                        <span className="text-[10px] text-gov-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                            Ver incidente <span className="material-symbols-outlined text-[10px]">arrow_forward</span>
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Item 2 */}
-                            <div className="relative h-32 rounded-xl overflow-hidden group cursor-pointer border border-gov-light/30">
-                                <img src="/assets/incident_trash.png" alt="Basura" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent"></div>
-                                <div className="absolute bottom-3 left-3 w-full pr-3">
-                                    <div className="flex justify-between items-end">
-                                        <div>
-                                            <span className="bg-gov-accent text-gov-bg text-[10px] font-bold px-2 py-0.5 rounded mb-1 inline-block">MEDIO</span>
-                                            <p className="text-white font-bold text-sm leading-tight">Acumulación de Basura</p>
-                                            <p className="text-gray-300 text-xs">Calle 12 • Hace 3h</p>
-                                        </div>
-                                        <span className="text-[10px] text-gov-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                            Ver incidente <span className="material-symbols-outlined text-[10px]">arrow_forward</span>
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Sentiment Mini */}
-                    <div className="bg-gov-surface border border-gov-light rounded-2xl p-6">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-white font-bold text-sm">Clima Social</h3>
-                            <span className="text-gov-primary text-xs font-bold">Positivo 70%</span>
-                        </div>
-                        <div className="w-full bg-gov-bg rounded-full h-2 mb-4 overflow-hidden">
-                            <div className="bg-gradient-to-r from-emerald-500 to-gov-primary h-full rounded-full" style={{ width: "70%" }}></div>
-                        </div>
-                        <p className="text-gov-grey text-xs">La percepción ciudadana ha mejorado un 5% tras el anuncio de obras.</p>
-                    </div>
-
-                </div>
-            </div>
-
+            <InviteDirectorModal 
+                isOpen={isInviteModalOpen}
+                onClose={() => setIsInviteModalOpen(false)}
+            />
         </div>
     );
 }
