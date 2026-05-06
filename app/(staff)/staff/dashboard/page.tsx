@@ -30,6 +30,7 @@ interface KPIs {
     resueltos: number;
     criticos: number;
     avgResponseHours: number | null;
+    pendingProcedures: number;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -41,7 +42,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-    const [kpis, setKpis] = useState<KPIs>({ total: 0, nuevos: 0, en_proceso: 0, resueltos: 0, criticos: 0, avgResponseHours: null });
+    const [kpis, setKpis] = useState<KPIs>({ total: 0, nuevos: 0, en_proceso: 0, resueltos: 0, criticos: 0, avgResponseHours: null, pendingProcedures: 0 });
     const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("Funcionario");
@@ -84,7 +85,14 @@ export default function DashboardPage() {
                 }, 0);
                 avgHours = Math.round(totalMs / resolved.length / 3600000 * 10) / 10;
             }
-            setKpis({ total, nuevos, en_proceso, resueltos, criticos, avgResponseHours: avgHours });
+
+            // Trámites Pendientes
+            const { count: pendingProcs } = await supabase
+                .from("procedure_requests")
+                .select("*", { count: "exact", head: true })
+                .eq("status", "pending");
+
+            setKpis({ total, nuevos, en_proceso, resueltos, criticos, avgResponseHours: avgHours, pendingProcedures: pendingProcs || 0 });
         }
 
         // Últimos 5 reportes enriquecidos para el drawer
@@ -291,7 +299,7 @@ export default function DashboardPage() {
                         { label: "Cuadrillas",     icon: "groups",      href: "/staff/crews",      color: "text-gov-primary", desc: "Estado de departamentos" },
                         { label: "Incidentes",      icon: "warning",     href: "/staff/incidents",  color: "text-amber-400",   desc: `${kpis.nuevos} sin atender` },
                         { label: "Obras Públicas",  icon: "engineering", href: "/staff/projects",   color: "text-blue-400",    desc: "Proyectos activos" },
-                        { label: "Servicios",       icon: "assignment",  href: "/staff/services",   color: "text-purple-400",  desc: "Trámites ciudadanos" },
+                        { label: "Servicios",       icon: "assignment",  href: "/staff/services",   color: "text-purple-400",  desc: kpis.pendingProcedures > 0 ? `${kpis.pendingProcedures} trámites pendientes` : "Trámites ciudadanos" },
                         { label: "Usuarios",        icon: "group",       href: "/staff/users",      color: "text-gov-grey",    desc: "Gestión de usuarios" },
                     ].map((item, i) => (
                         <Link key={i} href={item.href} className="group">

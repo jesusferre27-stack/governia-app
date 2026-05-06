@@ -58,6 +58,10 @@ export default function CitizenLayout({
                     <span className="material-symbols-outlined text-2xl">assignment</span>
                     <span className="text-[10px] font-medium">Trámites</span>
                 </Link>
+                <Link href="/citizen/requests" className={`flex flex-col items-center gap-1 p-2 transition-all ${pathname.startsWith('/citizen/requests') ? 'text-gov-primary' : 'text-gov-grey hover:text-white'}`}>
+                    <span className="material-symbols-outlined text-2xl">receipt_long</span>
+                    <span className="text-[10px] font-medium">Mis Trámites</span>
+                </Link>
                 <Link href="/citizen/profile" className={`flex flex-col items-center gap-1 p-2 transition-all ${isActive('/citizen/profile') ? 'text-gov-primary' : 'text-gov-grey hover:text-white'}`}>
                     <span className="material-symbols-outlined text-2xl">person</span>
                     <span className="text-[10px] font-medium">Perfil</span>
@@ -69,6 +73,7 @@ export default function CitizenLayout({
                 <Link href="/citizen" className={`text-sm font-bold hover:text-gov-primary transition-colors ${isActive('/citizen') ? 'text-gov-primary' : 'text-white'}`}>Inicio</Link>
                 <Link href="/citizen/activity" className={`text-sm font-bold hover:text-gov-primary transition-colors ${isActive('/citizen/activity') ? 'text-gov-primary' : 'text-white'}`}>Mis Reportes</Link>
                 <Link href="/citizen/procedures" className={`text-sm font-bold hover:text-gov-primary transition-colors ${isActive('/citizen/procedures') ? 'text-gov-primary' : 'text-white'}`}>Trámites</Link>
+                <Link href="/citizen/requests" className={`text-sm font-bold hover:text-gov-primary transition-colors ${pathname.startsWith('/citizen/requests') ? 'text-gov-primary' : 'text-white'}`}>Mis Trámites</Link>
                 <div className="w-px h-4 bg-gov-light mx-2"></div>
                 <Link href="/citizen/profile" className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-gov-light overflow-hidden flex items-center justify-center">

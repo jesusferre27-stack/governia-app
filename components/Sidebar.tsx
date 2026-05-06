@@ -11,6 +11,7 @@ const menuItems = [
     { name: "Incidentes",   href: "/staff/incidents", icon: "warning"             },
     { name: "Cuadrillas",   href: "/staff/crews",     icon: "groups"              },
     { name: "Obras Públicas",href: "/staff/projects", icon: "engineering"         },
+    { name: "Gestión Obras", href: "/staff/obras",    icon: "construction"        },
     { name: "Servicios",    href: "/staff/services",  icon: "assignment"          },
     { name: "Social",       href: "/staff/social",    icon: "sentiment_satisfied" },
     { name: "Usuarios",     href: "/staff/users",     icon: "group"               },
