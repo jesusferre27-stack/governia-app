@@ -128,11 +128,55 @@ export async function POST(req: Request) {
             }
 
         } else {
-            // SIMULACIÓN
-            console.log("No hay APIFY_API_TOKEN. Usando simulación dinámica...");
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+        } else {
+            // SIMULACIÓN REALISTA DE DEMOSTRACIÓN (Cuando no hay APIFY Token)
+            console.log("No hay APIFY_API_TOKEN. Usando simulación dinámica realista...");
+            await new Promise((resolve) => setTimeout(resolve, 2500)); // Simular tiempo de carga
+            
+            const randomAvatar = () => `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`;
+            const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
+            
             finalMentions = [
-                { platform: platform, author_handle: `Vecino de ${targetUrls[0] || 'Facebook'}`, author_avatar: 'https://i.pravatar.cc/100?img=15', content: 'Esto es una prueba dinámica simulada desde el API.', sentiment: 'Neutral', topics: ['#Prueba', 'Simulación'], posted_at: new Date().toISOString() }
+                { 
+                    platform: platform, 
+                    author_handle: `Juan Pérez (${platformName})`, 
+                    author_avatar: randomAvatar(), 
+                    content: 'La verdad me parece muy bien que el alcalde Sosimo López esté pavimentando la calle principal de Soteapan. Llevábamos 10 años pidiendo esto y por fin nos hacen caso. ¡Excelente gestión!', 
+                    sentiment: 'Positivo', 
+                    topics: ['#ObrasPúblicas', 'Pavimentación', 'Sosimo López'], 
+                    url: targetUrls[0] || 'https://facebook.com',
+                    posted_at: new Date(Date.now() - 1000 * 60 * 30).toISOString() // Hace 30 min
+                },
+                { 
+                    platform: platform, 
+                    author_handle: `María Hernández (${platformName})`, 
+                    author_avatar: randomAvatar(), 
+                    content: 'Otra vez pasó el camión de la basura sin llevarse las bolsas de la colonia Centro. Señor alcalde Sosimo, por favor ponga orden en el departamento de limpia, esto es un foco de infección.', 
+                    sentiment: 'Negativo', 
+                    topics: ['#ServiciosMunicipales', 'Basura', 'Queja'], 
+                    url: targetUrls[0] || 'https://facebook.com',
+                    posted_at: new Date(Date.now() - 1000 * 60 * 120).toISOString() // Hace 2 horas
+                },
+                { 
+                    platform: platform, 
+                    author_handle: `Comité Vecinal (${platformName})`, 
+                    author_avatar: randomAvatar(), 
+                    content: 'Informamos que mañana a las 5pm tendremos reunión en la plaza con autoridades municipales para revisar el tema del alumbrado público. Asistan todos.', 
+                    sentiment: 'Neutral', 
+                    topics: ['#Alumbrado', 'Reunión Vecinal', 'Seguridad'], 
+                    url: targetUrls[0] || 'https://facebook.com',
+                    posted_at: new Date(Date.now() - 1000 * 60 * 300).toISOString() // Hace 5 horas
+                },
+                { 
+                    platform: platform, 
+                    author_handle: `Carlos G. (${platformName})`, 
+                    author_avatar: randomAvatar(), 
+                    content: 'Muy bonita la feria patronal de este año en Soteapan, mis respetos para la organización del H. Ayuntamiento y del alcalde Sosimo Lopez. Todo muy seguro y familiar.', 
+                    sentiment: 'Positivo', 
+                    topics: ['#Cultura', 'Feria', 'Sosimo López', 'Seguridad'], 
+                    url: targetUrls[0] || 'https://facebook.com',
+                    posted_at: new Date(Date.now() - 1000 * 60 * 600).toISOString() // Hace 10 horas
+                }
             ];
         }
 
