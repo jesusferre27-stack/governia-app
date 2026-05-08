@@ -8,7 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(req: Request) {
     try {
-        const { userId, platform } = await req.json();
+        const { userId, platform, urls } = await req.json();
         if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
         if (!platform) return NextResponse.json({ error: 'Platform is required' }, { status: 400 });
 
@@ -28,13 +28,22 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Límite diario alcanzado (10/10). Adquiere más créditos para continuar.' }, { status: 429 });
         }
 
-        // 2. Obtener URLs de fuentes (social_sources)
-        const { data: sources } = await supabase
-            .from('social_sources')
-            .select('url')
-            .eq('platform', platform);
+        // 2. Obtener URLs
+        // Si el cliente envía las URLs (porque las leyó bien), las usamos. Si no, consultamos (puede fallar por RLS si no hay Service Key).
+        let targetUrls = urls || [];
+        
+        if (targetUrls.length === 0) {
+            const { data: sources } = await supabase
+                .from('social_sources')
+                .select('url')
+                .eq('platform', platform);
+                
+            if (sources) {
+                targetUrls = sources.map((s: any) => s.url);
+            }
+        }
 
-        if (!sources || sources.length === 0) {
+        if (targetUrls.length === 0) {
             return NextResponse.json({ error: `No tienes URLs configuradas para ${platform}. Ve a ⚙️ Fuentes de Datos.` }, { status: 400 });
         }
 
@@ -44,9 +53,9 @@ export async function POST(req: Request) {
 
         // 3. EXTRACCIÓN REAL CON APIFY (Por plataforma)
         if (APIFY_TOKEN && GEMINI_KEY) {
-            console.log(`Iniciando extracción en ${platform} con Apify...`);
+            console.log(`Iniciando extracción en ${platform} con Apify... URLs:`, targetUrls);
             
-            const startUrls = sources.map(s => ({ url: s.url }));
+            const startUrls = targetUrls.map((url: string) => ({ url }));
             let apifyActor = '';
             
             // Seleccionar el actor de Apify según la red (Asumimos Facebook por defecto para este ejemplo)
