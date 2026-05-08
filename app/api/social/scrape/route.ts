@@ -128,7 +128,7 @@ export async function POST(req: Request) {
             console.log("No hay APIFY_API_TOKEN. Usando simulación dinámica...");
             await new Promise((resolve) => setTimeout(resolve, 2000));
             finalMentions = [
-                { platform: platform, author_handle: `Vecino de ${sources[0].url}`, author_avatar: 'https://i.pravatar.cc/100?img=15', content: 'Esto es una prueba dinámica simulada desde el API.', sentiment: 'Neutral', topics: ['#Prueba', 'Simulación'], posted_at: new Date().toISOString() }
+                { platform: platform, author_handle: `Vecino de ${targetUrls[0] || 'Facebook'}`, author_avatar: 'https://i.pravatar.cc/100?img=15', content: 'Esto es una prueba dinámica simulada desde el API.', sentiment: 'Neutral', topics: ['#Prueba', 'Simulación'], posted_at: new Date().toISOString() }
             ];
         }
 
