@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         }
 
         const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
-        const GEMINI_KEY = process.env.GEMINI_API_KEY;
+        const GEMINI_KEY = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
         let finalMentions = [];
 
         // 3. EXTRACCIÓN REAL CON APIFY (Por plataforma)
@@ -130,9 +130,15 @@ export async function POST(req: Request) {
                 });
             }
 
-        } else {
-            // SIMULACIÓN REALISTA DE DEMOSTRACIÓN (Cuando no hay APIFY Token)
-            console.log("No hay APIFY_API_TOKEN. Usando simulación dinámica realista...");
+            if (finalMentions.length === 0) {
+                console.log("Apify devolvió 0 resultados (Posible bloqueo de FB). Activando simulación de respaldo...");
+            }
+
+        } 
+        
+        if (!APIFY_TOKEN || !GEMINI_KEY || finalMentions.length === 0) {
+            // SIMULACIÓN REALISTA DE DEMOSTRACIÓN (Cuando falla Apify o no hay Token)
+            console.log("Usando simulación dinámica realista como respaldo...");
             await new Promise((resolve) => setTimeout(resolve, 2500)); // Simular tiempo de carga
             
             const randomAvatar = () => `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`;
