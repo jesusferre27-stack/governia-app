@@ -9,6 +9,13 @@ export default function SocialPage() {
     const [scrapesToday, setScrapesToday] = useState(0);
     const [isScraping, setIsScraping] = useState(false);
     
+    // UI & Sources State
+    const [showSourcesModal, setShowSourcesModal] = useState(false);
+    const [scrapeDropdownOpen, setScrapeDropdownOpen] = useState(false);
+    const [sources, setSources] = useState<any[]>([]);
+    const [newSourceUrl, setNewSourceUrl] = useState('');
+    const [newSourcePlatform, setNewSourcePlatform] = useState('facebook');
+    
     // AI Generation State
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedContent, setGeneratedContent] = useState<string | null>(null);
@@ -20,7 +27,31 @@ export default function SocialPage() {
     useEffect(() => {
         fetchData();
         checkScrapeLimits();
+        fetchSources();
     }, []);
+
+    const fetchSources = async () => {
+        const { data } = await supabase.from('social_sources').select('*').order('created_at', { ascending: true });
+        if (data) setSources(data);
+    };
+
+    const addSource = async () => {
+        if (!newSourceUrl) return;
+        const { error } = await supabase.from('social_sources').insert({
+            platform: newSourcePlatform,
+            url: newSourceUrl,
+            name: newSourceUrl.replace('https://www.facebook.com/', '').substring(0, 20)
+        });
+        if (!error) {
+            setNewSourceUrl('');
+            fetchSources();
+        }
+    };
+
+    const deleteSource = async (id: string) => {
+        await supabase.from('social_sources').delete().eq('id', id);
+        fetchSources();
+    };
 
     const checkScrapeLimits = async () => {
         try {
@@ -54,11 +85,13 @@ export default function SocialPage() {
         setLoading(false);
     };
 
-    const handleScrape = async () => {
-        if (scrapesToday >= 5) {
-            alert("Has alcanzado el límite diario de 5 extracciones.");
+    const handleScrape = async (platform: string) => {
+        if (scrapesToday >= 10) {
+            alert("Has alcanzado el límite diario de 10 extracciones. Adquiere el plan Ilimitado.");
             return;
         }
+
+        setScrapeDropdownOpen(false);
 
         setIsScraping(true);
         try {
@@ -66,7 +99,7 @@ export default function SocialPage() {
             const res = await fetch('/api/social/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user?.id })
+                body: JSON.stringify({ userId: user?.id, platform })
             });
 
             const result = await res.json();
@@ -127,27 +160,105 @@ export default function SocialPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button 
-                        onClick={handleScrape}
-                        disabled={isScraping || scrapesToday >= 5}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm shadow-lg transition-all ${
-                            scrapesToday >= 5 
-                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-105'
-                        }`}
-                    >
-                        {isScraping ? (
-                            <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Extrayendo...</>
-                        ) : (
-                            <><span className="material-symbols-outlined">radar</span> Extraer Percepción</>
-                        )}
+                    <button onClick={() => setShowSourcesModal(true)} className="bg-gov-surface border border-gov-light text-gov-grey hover:text-white px-4 py-3 rounded-xl transition-colors flex items-center gap-2">
+                        <span className="material-symbols-outlined">settings</span> <span className="hidden md:inline">Fuentes</span>
                     </button>
-                    <div className="bg-gov-surface border border-gov-light px-3 py-2 rounded-lg text-center">
-                        <p className="text-[10px] text-gov-grey uppercase tracking-widest font-bold">Límite Diario</p>
-                        <p className="text-white font-black text-lg">{scrapesToday}/5</p>
+                    
+                    <div className="relative">
+                        <button 
+                            onClick={() => setScrapeDropdownOpen(!scrapeDropdownOpen)}
+                            disabled={isScraping || scrapesToday >= 10}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm shadow-lg transition-all ${
+                                scrapesToday >= 10 
+                                ? 'bg-gradient-to-r from-yellow-600 to-red-600 text-white animate-pulse shadow-[0_0_15px_rgba(250,204,21,0.5)]'
+                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-105'
+                            }`}
+                        >
+                            {isScraping ? (
+                                <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Extrayendo...</>
+                            ) : scrapesToday >= 10 ? (
+                                <><span className="material-symbols-outlined">diamond</span> Comprar Créditos</>
+                            ) : (
+                                <><span className="material-symbols-outlined">radar</span> Extraer Percepción <span className="material-symbols-outlined text-[16px]">expand_more</span></>
+                            )}
+                        </button>
+                        
+                        {scrapeDropdownOpen && scrapesToday < 10 && (
+                            <div className="absolute top-full right-0 mt-2 w-48 bg-gov-bg border border-gov-light rounded-xl shadow-2xl z-50 overflow-hidden">
+                                {['facebook', 'twitter', 'instagram', 'tiktok'].map(plat => (
+                                    <button key={plat} onClick={() => handleScrape(plat)} className="w-full text-left px-4 py-3 hover:bg-gov-surface text-white text-sm font-bold flex items-center gap-2 transition-colors">
+                                        <span className="material-symbols-outlined text-gov-primary text-sm">wifi_tethering</span>
+                                        {plat.charAt(0).toUpperCase() + plat.slice(1)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-gov-surface border border-gov-light px-3 py-2 rounded-lg text-center min-w-[80px]">
+                        <p className="text-[10px] text-gov-grey uppercase tracking-widest font-bold">Créditos</p>
+                        <p className={`font-black text-lg ${scrapesToday >= 10 ? 'text-red-400' : 'text-white'}`}>{10 - scrapesToday}/10</p>
                     </div>
                 </div>
             </div>
+
+            {showSourcesModal && (
+                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+                    <div className="bg-gov-bg border border-gov-light rounded-2xl max-w-2xl w-full p-6 relative shadow-2xl">
+                        <button onClick={() => setShowSourcesModal(false)} className="absolute top-4 right-4 text-gov-grey hover:text-white">
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
+                        
+                        <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-gov-primary">settings</span> Gestión de Fuentes de IA
+                        </h3>
+                        <p className="text-sm text-gray-400 mb-6">Añade los perfiles y páginas oficiales que la IA debe auditar.</p>
+
+                        <div className="flex flex-col md:flex-row gap-2 mb-6">
+                            <select 
+                                value={newSourcePlatform} 
+                                onChange={(e) => setNewSourcePlatform(e.target.value)}
+                                className="bg-gov-surface border border-gov-light rounded-xl px-4 py-3 text-white outline-none focus:border-gov-primary"
+                            >
+                                <option value="facebook">Facebook</option>
+                                <option value="twitter">X (Twitter)</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="tiktok">TikTok</option>
+                            </select>
+                            <input 
+                                type="url" 
+                                placeholder="https://..." 
+                                value={newSourceUrl}
+                                onChange={(e) => setNewSourceUrl(e.target.value)}
+                                className="flex-1 bg-gov-surface border border-gov-light rounded-xl px-4 py-3 text-white outline-none focus:border-gov-primary text-sm"
+                            />
+                            <button onClick={addSource} className="bg-gov-primary text-black font-bold px-6 py-3 rounded-xl hover:bg-gov-primary/80 transition-colors">
+                                Añadir
+                            </button>
+                        </div>
+
+                        <div className="bg-gov-surface border border-gov-light rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                            {sources.length === 0 ? (
+                                <p className="text-gray-500 text-center py-6 text-sm">No hay fuentes configuradas.</p>
+                            ) : (
+                                <table className="w-full text-left">
+                                    <tbody>
+                                        {sources.map(s => (
+                                            <tr key={s.id} className="border-b border-gov-light/50 last:border-0 hover:bg-white/5">
+                                                <td className="px-4 py-3 text-xs font-bold text-gov-primary uppercase w-24">{s.platform}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-300 truncate max-w-[200px]">{s.url}</td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <button onClick={() => deleteSource(s.id)} className="text-red-400 hover:text-red-300 text-xs font-bold bg-red-400/10 px-3 py-1 rounded-lg">Eliminar</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* AI Action Drawer Modal (Simple Overlay) */}
             {activeMention && (

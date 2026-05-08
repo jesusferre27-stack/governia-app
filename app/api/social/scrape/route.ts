@@ -8,12 +8,13 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(req: Request) {
     try {
-        const { userId } = await req.json();
+        const { userId, platform } = await req.json();
         if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+        if (!platform) return NextResponse.json({ error: 'Platform is required' }, { status: 400 });
 
         const today = new Date().toISOString().split('T')[0];
 
-        // 1. Verificar límites (5 al día)
+        // 1. Verificar límites (10 al día)
         const { data: logData, error: logError } = await supabase
             .from('social_scrape_logs')
             .select('*')
@@ -23,27 +24,46 @@ export async function POST(req: Request) {
 
         const currentScrapes = logData ? logData.scrapes_count : 0;
         
-        if (currentScrapes >= 5) {
-            return NextResponse.json({ error: 'Límite de extracciones diarias alcanzado (5/5).' }, { status: 429 });
+        if (currentScrapes >= 10) {
+            return NextResponse.json({ error: 'Límite diario alcanzado (10/10). Adquiere más créditos para continuar.' }, { status: 429 });
+        }
+
+        // 2. Obtener URLs de fuentes (social_sources)
+        const { data: sources } = await supabase
+            .from('social_sources')
+            .select('url')
+            .eq('platform', platform);
+
+        if (!sources || sources.length === 0) {
+            return NextResponse.json({ error: `No tienes URLs configuradas para ${platform}. Ve a ⚙️ Fuentes de Datos.` }, { status: 400 });
         }
 
         const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
         const GEMINI_KEY = process.env.GEMINI_API_KEY;
         let finalMentions = [];
 
-        // 2. EXTRACCIÓN REAL CON APIFY (Facebook Pages Scraper)
+        // 3. EXTRACCIÓN REAL CON APIFY (Por plataforma)
         if (APIFY_TOKEN && GEMINI_KEY) {
-            console.log("Iniciando extracción REAL con Apify...");
+            console.log(`Iniciando extracción en ${platform} con Apify...`);
             
-            // Reemplaza esta URL con la página oficial de tu municipio o la página a monitorear
-            const targetUrl = "https://www.facebook.com/GobiernoDeMexico"; 
+            const startUrls = sources.map(s => ({ url: s.url }));
+            let apifyActor = '';
+            
+            // Seleccionar el actor de Apify según la red (Asumimos Facebook por defecto para este ejemplo)
+            if (platform === 'facebook') apifyActor = 'apify~facebook-pages-scraper';
+            // if (platform === 'instagram') apifyActor = 'apify~instagram-scraper'; // Futura integración
+            // if (platform === 'tiktok') apifyActor = 'clockwork~tiktok-profile-scraper'; // Futura integración
 
-            const apifyRes = await fetch(`https://api.apify.com/v2/acts/apify~facebook-pages-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}`, {
+            if (!apifyActor) {
+                return NextResponse.json({ error: `Scraper de ${platform} en mantenimiento. Usa Facebook.` }, { status: 400 });
+            }
+
+            const apifyRes = await fetch(`https://api.apify.com/v2/acts/${apifyActor}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    startUrls: [{ url: targetUrl }],
-                    resultsLimit: 5 // Extraer los últimos 5 posts/comentarios
+                    startUrls: startUrls,
+                    resultsLimit: 5 // Límite por petición para evitar timeouts de Vercel
                 })
             });
 
@@ -54,12 +74,11 @@ export async function POST(req: Request) {
 
             const scrapedData = await apifyRes.json();
 
-            // 3. ANÁLISIS DE SENTIMIENTO CON GEMINI
+            // 4. ANÁLISIS DE SENTIMIENTO CON GEMINI
             for (const post of scrapedData) {
                 if (!post.text) continue;
 
-                // Prompteamos a Gemini para que analice el post
-                const prompt = `Analiza este comentario ciudadano de Facebook: "${post.text}". 
+                const prompt = `Analiza este comentario ciudadano de ${platform}: "${post.text}". 
                 Responde EXACTAMENTE con un JSON con este formato: {"sentiment": "Positivo|Neutral|Negativo", "topics": ["#Tema1", "Tema2"]}`;
 
                 const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
@@ -84,34 +103,33 @@ export async function POST(req: Request) {
                 }
 
                 finalMentions.push({
-                    platform: 'facebook',
-                    author_handle: post.pageName || 'Usuario de Facebook',
-                    author_avatar: post.profilePic || 'https://i.pravatar.cc/150?img=33',
+                    platform: platform,
+                    author_handle: post.pageName || post.ownerUsername || 'Usuario Anónimo',
+                    author_avatar: post.profilePic || post.ownerProfilePicUrl || 'https://i.pravatar.cc/150?img=33',
                     content: post.text.substring(0, 500),
                     sentiment: sentiment,
                     topics: topics,
                     url: post.url,
-                    posted_at: post.time || new Date().toISOString()
+                    posted_at: post.time || post.timestamp || new Date().toISOString()
                 });
             }
 
         } else {
-            // Si no hay TOKEN de APIFY, inyectamos los datos de simulación para que la app no truene
-            console.log("No hay APIFY_API_TOKEN. Usando datos de simulación...");
+            // SIMULACIÓN
+            console.log("No hay APIFY_API_TOKEN. Usando simulación dinámica...");
             await new Promise((resolve) => setTimeout(resolve, 2000));
             finalMentions = [
-                { platform: 'facebook', author_handle: 'Vecinos del Centro', author_avatar: 'https://i.pravatar.cc/100?img=15', content: 'Acaban de inaugurar la luminaria en la calle 20. Se ve mucho más seguro ahora.', sentiment: 'Positivo', topics: ['#Alumbrado', 'Seguridad'], posted_at: new Date().toISOString() },
-                { platform: 'twitter', author_handle: '@juanito_mx', author_avatar: 'https://i.pravatar.cc/100?img=16', content: 'Otra fuga de agua en la colonia Reforma. Llevamos 3 días reportando y no vienen!!!', sentiment: 'Negativo', topics: ['#Fuga', 'AguaPotable'], posted_at: new Date().toISOString() }
+                { platform: platform, author_handle: `Vecino de ${sources[0].url}`, author_avatar: 'https://i.pravatar.cc/100?img=15', content: 'Esto es una prueba dinámica simulada desde el API.', sentiment: 'Neutral', topics: ['#Prueba', 'Simulación'], posted_at: new Date().toISOString() }
             ];
         }
 
-        // 4. Guardar en Base de Datos
+        // 5. Guardar en Base de Datos
         if (finalMentions.length > 0) {
             const { error: insertError } = await supabase.from('social_mentions').insert(finalMentions);
             if (insertError) throw insertError;
         }
 
-        // 5. Actualizar log
+        // 6. Actualizar log
         if (logData) {
             await supabase.from('social_scrape_logs').update({ scrapes_count: currentScrapes + 1 }).eq('id', logData.id);
         } else {
