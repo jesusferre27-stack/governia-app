@@ -23,6 +23,10 @@ export default function SocialPage() {
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [activeMention, setActiveMention] = useState<any | null>(null);
 
+    // PDF Report State
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [executiveReportText, setExecutiveReportText] = useState('');
+
     const supabase = createClient();
 
     useEffect(() => {
@@ -161,6 +165,60 @@ export default function SocialPage() {
         setIsGenerating(false);
     };
 
+    const generatePDFReport = async () => {
+        if (mentions.length === 0) {
+            alert("No hay datos para generar el reporte.");
+            return;
+        }
+        
+        setIsGeneratingReport(true);
+        try {
+            // 1. Obtener Resumen de Gemini
+            const res = await fetch('/api/social/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mentions, context: keywordContext })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            setExecutiveReportText(data.report);
+
+            // 2. Esperar a que React renderice el texto en el DOM oculto
+            setTimeout(async () => {
+                const element = document.getElementById('pdf-report-template');
+                if (element) {
+                    element.style.display = 'block'; // Mostrar temporalmente para capturar
+                    
+                    try {
+                        const html2pdf = (await import('html2pdf.js')).default;
+                        const opt = {
+                            margin:       [15, 15, 15, 15],
+                            filename:     'Analisis_Opinion_Publica.pdf',
+                            image:        { type: 'jpeg', quality: 0.98 },
+                            html2canvas:  { scale: 2, useCORS: true, logging: false },
+                            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+                        
+                        await html2pdf().set(opt).from(element).save();
+                    } catch (pdfError) {
+                        console.error("Error cargando html2pdf", pdfError);
+                        alert("Hubo un problema procesando el PDF en tu navegador.");
+                    }
+                    
+                    element.style.display = 'none'; // Volver a ocultar
+                }
+                setIsGeneratingReport(false);
+            }, 800);
+
+        } catch (err) {
+            console.error(err);
+            alert("Error al redactar el análisis ejecutivo.");
+            setIsGeneratingReport(false);
+        }
+    };
+
     const positiveCount = mentions.filter(m => m.sentiment === 'Positivo').length;
     const globalSentiment = mentions.length > 0 ? Math.round((positiveCount / mentions.length) * 100) : 0;
 
@@ -186,7 +244,20 @@ export default function SocialPage() {
                     </div>
 
                     <button onClick={() => setShowSourcesModal(true)} className="bg-gov-surface border border-gov-light text-gov-grey hover:text-white px-4 py-3 rounded-xl transition-colors flex items-center gap-2">
-                        <span className="material-symbols-outlined">settings</span> <span className="hidden md:inline">Fuentes</span>
+                        <span className="material-symbols-outlined">settings</span> <span className="hidden xl:inline">Fuentes</span>
+                    </button>
+                    
+                    <button 
+                        onClick={generatePDFReport}
+                        disabled={isGeneratingReport || mentions.length === 0}
+                        className={`bg-gov-surface border border-gov-light text-white hover:text-green-400 hover:border-green-500/50 px-4 py-3 rounded-xl transition-all flex items-center gap-2 ${isGeneratingReport ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        {isGeneratingReport ? (
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        ) : (
+                            <span className="material-symbols-outlined text-red-400">picture_as_pdf</span>
+                        )}
+                        <span className="hidden xl:inline text-sm font-bold">Descarga tu análisis de opinión pública</span>
                     </button>
                     
                     <div className="relative">
@@ -461,6 +532,73 @@ export default function SocialPage() {
                     ))}
                 </div>
             )}
+
+            {/* HIDDEN PDF TEMPLATE */}
+            <div id="pdf-report-template" className="hidden bg-white text-black p-8" style={{ width: '800px', fontFamily: 'Arial, sans-serif' }}>
+                {/* Encabezado */}
+                <div className="border-b-4 border-green-700 pb-6 mb-8 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">H. Ayuntamiento</h1>
+                        <p className="text-md text-gray-500 font-bold">Centro de Inteligencia y Escucha Social</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-lg font-bold text-gray-800">Reporte Ejecutivo de Percepción Pública</p>
+                        <p className="text-sm text-gray-500">{new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    </div>
+                </div>
+
+                {/* Métricas Clave */}
+                <div className="flex gap-6 mb-8">
+                    <div className="border-2 border-gray-200 rounded-xl p-6 text-center flex-1 bg-gray-50">
+                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-2">Sentimiento Positivo Global</p>
+                        <p className="text-5xl font-black text-green-600">{globalSentiment}%</p>
+                    </div>
+                    <div className="border-2 border-gray-200 rounded-xl p-6 text-center flex-1 bg-gray-50">
+                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-2">Volumen de Interacciones</p>
+                        <p className="text-5xl font-black text-blue-600">{mentions.length}</p>
+                    </div>
+                </div>
+
+                {/* Resumen Ejecutivo IA */}
+                <div className="mb-8">
+                    <h2 className="text-xl font-bold text-green-800 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
+                        <span className="material-symbols-outlined">analytics</span> Análisis Estratégico AI
+                    </h2>
+                    <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: executiveReportText.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>') }} />
+                </div>
+
+                {/* Temas Clave */}
+                <div className="mb-10 page-break-inside-avoid">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Principales Tendencias</h2>
+                    <div className="flex flex-wrap gap-2">
+                        {Array.from(new Set(mentions.flatMap(m => m.topics || []))).slice(0, 15).map((tag: any, i) => (
+                            <span key={i} className="bg-gray-100 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-xs font-bold shadow-sm">
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Muestreo de Menciones */}
+                <div className="page-break-inside-avoid">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Muestreo de Comentarios Relevantes</h2>
+                    <div className="space-y-4">
+                        {mentions.slice(0, 5).map((m: any, i) => (
+                            <div key={i} className="border-l-4 border-gray-400 pl-4 py-2 bg-gray-50 rounded-r-lg">
+                                <p className="text-xs text-gray-500 mb-1 font-bold">
+                                    {m.author_handle} <span className="font-normal text-gray-400">en {m.platform}</span> 
+                                    <span className={`ml-3 px-2 py-0.5 rounded text-[10px] text-white font-bold ${m.sentiment === 'Positivo' ? 'bg-green-500' : m.sentiment === 'Negativo' ? 'bg-red-500' : 'bg-gray-500'}`}>{m.sentiment}</span>
+                                </p>
+                                <p className="text-sm text-gray-800 italic">"{m.content}"</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="mt-16 text-center text-[10px] text-gray-400 border-t border-gray-200 pt-6 font-mono">
+                    Documento generado confidencialmente por el Sistema Governia Inteligencia Social. 
+                </div>
+            </div>
         </div>
     );
 }
