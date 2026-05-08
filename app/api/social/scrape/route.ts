@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Inicializar cliente de Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(req: Request) {
     try {
+        // Inicializar cliente de Supabase usando el JWT del usuario para pasar las políticas RLS
+        const authHeader = req.headers.get('Authorization');
+        const supabase = createClient(supabaseUrl, supabaseKey, {
+            global: { headers: { Authorization: authHeader || '' } }
+        });
+
         const { userId, platform, urls } = await req.json();
         if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
         if (!platform) return NextResponse.json({ error: 'Platform is required' }, { status: 400 });

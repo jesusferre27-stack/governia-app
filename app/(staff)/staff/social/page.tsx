@@ -98,14 +98,18 @@ export default function SocialPage() {
             // Extraer las URLs específicas de la plataforma seleccionada desde el estado frontend
             const targetUrls = sources.filter(s => s.platform === platform).map(s => s.url);
 
+            const { data: { session } } = await supabase.auth.getSession();
             const { data: { user } } = await supabase.auth.getUser();
             const res = await fetch('/api/social/scrape', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
                 body: JSON.stringify({ 
                     userId: user?.id, 
                     platform,
-                    urls: targetUrls // Pasamos las URLs directamente para que el backend no tenga problemas de RLS
+                    urls: targetUrls
                 })
             });
 
