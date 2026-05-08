@@ -12,7 +12,7 @@ export async function POST(req: Request) {
             global: { headers: { Authorization: authHeader || '' } }
         });
 
-        const { userId, platform, urls } = await req.json();
+        const { userId, platform, urls, context } = await req.json();
         if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
         if (!platform) return NextResponse.json({ error: 'Platform is required' }, { status: 400 });
 
@@ -91,8 +91,11 @@ export async function POST(req: Request) {
             for (const post of scrapedData) {
                 if (!post.text) continue;
 
-                const prompt = `Analiza este comentario ciudadano de ${platform}: "${post.text}". 
-                Responde EXACTAMENTE con un JSON con este formato: {"sentiment": "Positivo|Neutral|Negativo", "topics": ["#Tema1", "Tema2"]}`;
+                let prompt = `Analiza este comentario ciudadano de ${platform}: "${post.text}". `;
+                if (context) {
+                    prompt += `El usuario está rastreando específicamente este contexto estratégico: "${context}". Por favor, evalúa el sentimiento PRINCIPALMENTE en relación a ese contexto. `;
+                }
+                prompt += `Responde EXACTAMENTE con un JSON con este formato: {"sentiment": "Positivo|Neutral|Negativo", "topics": ["#Tema1", "Tema2"]}`;
 
                 const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
                     method: 'POST',
@@ -128,22 +131,22 @@ export async function POST(req: Request) {
             }
 
         } else {
-        } else {
             // SIMULACIÓN REALISTA DE DEMOSTRACIÓN (Cuando no hay APIFY Token)
             console.log("No hay APIFY_API_TOKEN. Usando simulación dinámica realista...");
             await new Promise((resolve) => setTimeout(resolve, 2500)); // Simular tiempo de carga
             
             const randomAvatar = () => `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`;
             const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
+            const focusContext = context ? context : 'Sosimo López';
             
             finalMentions = [
                 { 
                     platform: platform, 
                     author_handle: `Juan Pérez (${platformName})`, 
                     author_avatar: randomAvatar(), 
-                    content: 'La verdad me parece muy bien que el alcalde Sosimo López esté pavimentando la calle principal de Soteapan. Llevábamos 10 años pidiendo esto y por fin nos hacen caso. ¡Excelente gestión!', 
+                    content: `La verdad me parece muy bien la gestión respecto a ${focusContext}. Llevábamos tiempo pidiendo esto y por fin nos hacen caso. ¡Excelente!`, 
                     sentiment: 'Positivo', 
-                    topics: ['#ObrasPúblicas', 'Pavimentación', 'Sosimo López'], 
+                    topics: ['#ObrasPúblicas', 'Gestión', focusContext.substring(0, 15)], 
                     url: targetUrls[0] || 'https://facebook.com',
                     posted_at: new Date(Date.now() - 1000 * 60 * 30).toISOString() // Hace 30 min
                 },
@@ -151,9 +154,9 @@ export async function POST(req: Request) {
                     platform: platform, 
                     author_handle: `María Hernández (${platformName})`, 
                     author_avatar: randomAvatar(), 
-                    content: 'Otra vez pasó el camión de la basura sin llevarse las bolsas de la colonia Centro. Señor alcalde Sosimo, por favor ponga orden en el departamento de limpia, esto es un foco de infección.', 
+                    content: `Tengo mis dudas sobre lo que están haciendo con ${focusContext}. Espero que transparente los recursos porque se ve muy lento el avance.`, 
                     sentiment: 'Negativo', 
-                    topics: ['#ServiciosMunicipales', 'Basura', 'Queja'], 
+                    topics: ['#Transparencia', 'Queja', focusContext.substring(0, 15)], 
                     url: targetUrls[0] || 'https://facebook.com',
                     posted_at: new Date(Date.now() - 1000 * 60 * 120).toISOString() // Hace 2 horas
                 },
@@ -161,21 +164,11 @@ export async function POST(req: Request) {
                     platform: platform, 
                     author_handle: `Comité Vecinal (${platformName})`, 
                     author_avatar: randomAvatar(), 
-                    content: 'Informamos que mañana a las 5pm tendremos reunión en la plaza con autoridades municipales para revisar el tema del alumbrado público. Asistan todos.', 
+                    content: `Reunión informativa mañana en la plaza central para discutir detalles sobre ${focusContext}. Favor de asistir puntuales.`, 
                     sentiment: 'Neutral', 
-                    topics: ['#Alumbrado', 'Reunión Vecinal', 'Seguridad'], 
+                    topics: ['#ReuniónVecinal', 'Aviso', focusContext.substring(0, 15)], 
                     url: targetUrls[0] || 'https://facebook.com',
                     posted_at: new Date(Date.now() - 1000 * 60 * 300).toISOString() // Hace 5 horas
-                },
-                { 
-                    platform: platform, 
-                    author_handle: `Carlos G. (${platformName})`, 
-                    author_avatar: randomAvatar(), 
-                    content: 'Muy bonita la feria patronal de este año en Soteapan, mis respetos para la organización del H. Ayuntamiento y del alcalde Sosimo Lopez. Todo muy seguro y familiar.', 
-                    sentiment: 'Positivo', 
-                    topics: ['#Cultura', 'Feria', 'Sosimo López', 'Seguridad'], 
-                    url: targetUrls[0] || 'https://facebook.com',
-                    posted_at: new Date(Date.now() - 1000 * 60 * 600).toISOString() // Hace 10 horas
                 }
             ];
         }
