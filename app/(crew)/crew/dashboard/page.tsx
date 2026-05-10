@@ -27,7 +27,8 @@ interface Report {
 }
 
 export default function CrewDashboardPage() {
-    const [dept, setDept] = useState<Department | null>(null);
+    const [depts, setDepts] = useState<Department[]>([]);
+    const [activeDeptId, setActiveDeptId] = useState<string | null>(null);
     const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -36,28 +37,34 @@ export default function CrewDashboardPage() {
         loadCrewData();
     }, []);
 
-    const loadCrewData = async () => {
+    const loadCrewData = async (deptIdToLoad?: string) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // 1. Obtener el departamento asignado a este director
-        const { data: deptData } = await supabase
+        // 1. Obtener todos los departamentos asignados a este director
+        const { data: deptsData } = await supabase
             .from("departments")
             .select("*")
-            .eq("manager_id", user.id)
-            .single();
+            .eq("manager_id", user.id);
 
-        if (deptData) {
-            setDept(deptData);
+        if (deptsData && deptsData.length > 0) {
+            setDepts(deptsData);
+            
+            // Usar el departamento seleccionado o el primero por defecto
+            const currentDeptId = deptIdToLoad || deptsData[0].id;
+            setActiveDeptId(currentDeptId);
 
             // 2. Obtener reportes de este departamento
             const { data: reportsData } = await supabase
                 .from("reports")
                 .select("*, report_photos(file_url)")
-                .eq("department_id", deptData.id)
+                .eq("department_id", currentDeptId)
                 .order("created_at", { ascending: false });
 
             if (reportsData) setReports(reportsData as any[]);
+        } else {
+            setDepts([]);
+            setActiveDeptId(null);
         }
         setLoading(false);
     };
@@ -70,17 +77,25 @@ export default function CrewDashboardPage() {
         );
     }
 
-    if (!dept) {
+    if (depts.length === 0 || !activeDeptId) {
         return (
             <div className="min-h-screen bg-gov-bg flex items-center justify-center p-6">
                 <div className="bg-gov-surface border border-gov-light p-10 rounded-3xl text-center max-w-md">
                     <span className="material-symbols-outlined text-gov-grey text-6xl mb-4">error_outline</span>
                     <h1 className="text-white text-2xl font-bold mb-2">Sin Acceso</h1>
                     <p className="text-gov-grey">No tienes un departamento asignado. Contacta al administrador.</p>
+                    <button 
+                        onClick={() => supabase.auth.signOut().then(() => window.location.href = "/")}
+                        className="mt-6 bg-gov-light text-white px-6 py-2 rounded-xl font-bold hover:bg-gov-grey transition-all"
+                    >
+                        Cerrar Sesión
+                    </button>
                 </div>
             </div>
         );
     }
+
+    const activeDept = depts.find(d => d.id === activeDeptId) || depts[0];
 
     const stats = {
         pending: reports.filter(r => r.status === "asignado" || r.status === "en_progreso").length,
@@ -95,12 +110,25 @@ export default function CrewDashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center border border-gov-light bg-gov-surface shadow-xl">
-                        <span className="material-symbols-outlined text-4xl" style={{ color: dept.color }}>
-                            {dept.icon}
+                        <span className="material-symbols-outlined text-4xl" style={{ color: activeDept.color }}>
+                            {activeDept.icon}
                         </span>
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-white uppercase tracking-tight">{dept.name}</h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-3xl font-black text-white uppercase tracking-tight">{activeDept.name}</h1>
+                            {depts.length > 1 && (
+                                <select 
+                                    value={activeDeptId}
+                                    onChange={(e) => loadCrewData(e.target.value)}
+                                    className="bg-gov-surface border border-gov-light text-white text-sm rounded-lg px-3 py-1 outline-none"
+                                >
+                                    {depts.map(d => (
+                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
                         <p className="text-gov-grey font-medium flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                             Panel del Director de Cuadrilla

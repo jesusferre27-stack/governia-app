@@ -22,6 +22,9 @@ export default function SocialPage() {
     const [generatedContent, setGeneratedContent] = useState<string | null>(null);
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [activeMention, setActiveMention] = useState<any | null>(null);
+    const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
+    const [polishedPost, setPolishedPost] = useState<string | null>(null);
+    const [isPolishing, setIsPolishing] = useState(false);
 
     // PDF Report State
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -165,6 +168,46 @@ export default function SocialPage() {
         setIsGenerating(false);
     };
 
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                if (event.target?.result) {
+                    setUploadedPhotos(prev => [...prev, event.target!.result as string]);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const polishPost = async () => {
+        if (!generatedContent) return;
+        setIsPolishing(true);
+        try {
+            const res = await fetch('/api/social/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'polish_post',
+                    mentionContent: generatedContent,
+                    extraDetails: uploadedPhotos.length > 0 ? 'Se adjuntan fotos de evidencia del trabajo.' : ''
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                setPolishedPost(data.text);
+            } else {
+                alert(data.error || "Error puliendo contenido.");
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        setIsPolishing(false);
+    };
+
     const generatePDFReport = async () => {
         if (mentions.length === 0) {
             alert("No hay datos para generar el reporte.");
@@ -185,32 +228,90 @@ export default function SocialPage() {
             
             setExecutiveReportText(data.report);
 
-            // 2. Esperar a que React renderice el texto en el DOM oculto
-            setTimeout(async () => {
-                const element = document.getElementById('pdf-report-template');
-                if (element) {
-                    element.style.display = 'block'; // Mostrar temporalmente para capturar
-                    
+            // 2. Generar PDF en un iFrame aislado para evitar crash de html2canvas con Tailwind
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+
+            const htmlContent = `
+                <html>
+                <head><meta charset="utf-8" /></head>
+                <body style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                    <div style="border-bottom: 4px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between;">
+                        <div>
+                            <h1 style="font-size: 28px; font-weight: bold; margin: 0; color: #111;">H. AYUNTAMIENTO</h1>
+                            <p style="margin: 5px 0 0 0; color: #666;">Centro de Inteligencia y Escucha Social</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p style="font-size: 18px; font-weight: bold; margin: 0;">Reporte Ejecutivo de Percepción Pública</p>
+                            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">${new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                        <div style="flex: 1; border: 2px solid #e5e7eb; border-radius: 10px; padding: 20px; text-align: center; background: #f9fafb;">
+                            <p style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">Sentimiento Positivo</p>
+                            <p style="font-size: 40px; font-weight: bold; color: #16a34a; margin: 0;">${globalSentiment}%</p>
+                        </div>
+                        <div style="flex: 1; border: 2px solid #e5e7eb; border-radius: 10px; padding: 20px; text-align: center; background: #f9fafb;">
+                            <p style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">Volumen Analizado</p>
+                            <p style="font-size: 40px; font-weight: bold; color: #2563eb; margin: 0;">${mentions.length}</p>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 30px;">
+                        <h2 style="font-size: 20px; color: #166534; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 15px;">Análisis Estratégico AI</h2>
+                        <div style="font-size: 14px; line-height: 1.6; color: #374151;">
+                            ${data.report.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 30px;">
+                        <h2 style="font-size: 18px; color: #1f2937; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 15px;">Muestreo de Comentarios Relevantes</h2>
+                        ${mentions.slice(0, 5).map((m: any) => `
+                            <div style="border-left: 4px solid #9ca3af; padding: 10px 15px; margin-bottom: 15px; background: #f9fafb;">
+                                <p style="font-size: 12px; color: #6b7280; margin: 0 0 5px 0;">
+                                    <b>${m.author_handle}</b> en ${m.platform} 
+                                    <span style="background: ${m.sentiment === 'Positivo' ? '#22c55e' : m.sentiment === 'Negativo' ? '#ef4444' : '#6b7280'}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 10px;">${m.sentiment}</span>
+                                </p>
+                                <p style="font-size: 14px; color: #1f2937; margin: 0; font-style: italic;">"${m.content}"</p>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                        Documento generado confidencialmente por el Sistema Governia Inteligencia Social.
+                    </div>
+                </body>
+                </html>
+            `;
+
+            if (iframe.contentDocument) {
+                iframe.contentDocument.open();
+                iframe.contentDocument.write(htmlContent);
+                iframe.contentDocument.close();
+
+                setTimeout(async () => {
                     try {
                         const html2pdf = (await import('html2pdf.js')).default;
                         const opt = {
-                            margin:       [15, 15, 15, 15],
+                            margin:       10,
                             filename:     'Analisis_Opinion_Publica.pdf',
                             image:        { type: 'jpeg', quality: 0.98 },
                             html2canvas:  { scale: 2, useCORS: true, logging: false },
                             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                         };
                         
-                        await html2pdf().set(opt).from(element).save();
+                        await html2pdf().set(opt).from(iframe.contentDocument?.body).save();
                     } catch (pdfError) {
-                        console.error("Error cargando html2pdf", pdfError);
-                        alert("Hubo un problema procesando el PDF en tu navegador.");
+                        console.error(pdfError);
+                        alert("Error al guardar el PDF.");
                     }
                     
-                    element.style.display = 'none'; // Volver a ocultar
-                }
-                setIsGeneratingReport(false);
-            }, 800);
+                    document.body.removeChild(iframe);
+                    setIsGeneratingReport(false);
+                }, 500); // Dar tiempo a que el iframe renderice
+            }
 
         } catch (err) {
             console.error(err);
@@ -224,47 +325,43 @@ export default function SocialPage() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold text-white">Escucha Social & Centro AI</h2>
-                    <p className="text-gov-grey">Análisis de sentimiento ciudadano y respuesta estratégica.</p>
+            <div className="flex flex-col gap-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 className="text-3xl font-bold text-white">Escucha Social & Centro AI</h2>
+                        <p className="text-gov-grey">Análisis de sentimiento ciudadano y respuesta estratégica.</p>
+                    </div>
+                    
+                    <div className="bg-gov-surface border border-gov-light px-4 py-2 rounded-xl text-center shadow-lg flex items-center gap-3">
+                        <div className="text-left">
+                            <p className="text-[10px] text-gov-grey uppercase tracking-widest font-bold">Créditos</p>
+                            <p className={`font-black text-xl leading-none ${scrapesToday >= 10 ? 'text-red-400' : 'text-white'}`}>{10 - scrapesToday}<span className="text-gray-500 text-sm">/10</span></p>
+                        </div>
+                        <span className="material-symbols-outlined text-yellow-500 text-3xl">diamond</span>
+                    </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-                    
-                    <div className="relative w-full md:w-64">
+                <div className="flex flex-wrap items-center gap-3 bg-gov-surface border border-gov-light p-3 rounded-2xl shadow-sm">
+                    <div className="relative flex-grow md:max-w-xs">
                         <span className="material-symbols-outlined absolute left-3 top-3 text-gov-grey text-sm">search</span>
                         <input 
                             type="text" 
-                            placeholder="Ej. Sosimo Lopez, Baches..." 
+                            placeholder="Ej. Baches, Seguridad..." 
                             value={keywordContext}
                             onChange={(e) => setKeywordContext(e.target.value)}
-                            className="w-full bg-gov-surface border border-gov-light rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:border-gov-primary outline-none transition-colors"
+                            className="w-full bg-gov-bg border border-gov-light rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:border-gov-primary outline-none transition-colors"
                         />
                     </div>
 
-                    <button onClick={() => setShowSourcesModal(true)} className="bg-gov-surface border border-gov-light text-gov-grey hover:text-white px-4 py-3 rounded-xl transition-colors flex items-center gap-2">
-                        <span className="material-symbols-outlined">settings</span> <span className="hidden xl:inline">Fuentes</span>
-                    </button>
-                    
-                    <button 
-                        onClick={generatePDFReport}
-                        disabled={isGeneratingReport || mentions.length === 0}
-                        className={`bg-gov-surface border border-gov-light text-white hover:text-green-400 hover:border-green-500/50 px-4 py-3 rounded-xl transition-all flex items-center gap-2 ${isGeneratingReport ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        {isGeneratingReport ? (
-                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        ) : (
-                            <span className="material-symbols-outlined text-red-400">picture_as_pdf</span>
-                        )}
-                        <span className="hidden xl:inline text-sm font-bold">Descarga tu análisis de opinión pública</span>
+                    <button onClick={() => setShowSourcesModal(true)} className="bg-gov-bg border border-gov-light text-gov-grey hover:text-white px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm">settings</span> <span className="hidden xl:inline text-sm font-bold">Fuentes</span>
                     </button>
                     
                     <div className="relative">
                         <button 
                             onClick={() => setScrapeDropdownOpen(!scrapeDropdownOpen)}
                             disabled={isScraping || scrapesToday >= 10}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm shadow-lg transition-all ${
+                            className={`flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-sm shadow-lg transition-all ${
                                 scrapesToday >= 10 
                                 ? 'bg-gradient-to-r from-yellow-600 to-red-600 text-white animate-pulse shadow-[0_0_15px_rgba(250,204,21,0.5)]'
                                 : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-105'
@@ -273,14 +370,14 @@ export default function SocialPage() {
                             {isScraping ? (
                                 <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Extrayendo...</>
                             ) : scrapesToday >= 10 ? (
-                                <><span className="material-symbols-outlined">diamond</span> Comprar Créditos</>
+                                <><span className="material-symbols-outlined text-sm">diamond</span> Sin Créditos</>
                             ) : (
-                                <><span className="material-symbols-outlined">radar</span> Extraer Percepción <span className="material-symbols-outlined text-[16px]">expand_more</span></>
+                                <><span className="material-symbols-outlined text-sm">radar</span> Extraer Percepción <span className="material-symbols-outlined text-sm">expand_more</span></>
                             )}
                         </button>
                         
                         {scrapeDropdownOpen && scrapesToday < 10 && (
-                            <div className="absolute top-full right-0 mt-2 w-48 bg-gov-bg border border-gov-light rounded-xl shadow-2xl z-50 overflow-hidden">
+                            <div className="absolute top-full left-0 mt-2 w-48 bg-gov-bg border border-gov-light rounded-xl shadow-2xl z-50 overflow-hidden">
                                 {['facebook', 'twitter', 'instagram', 'tiktok'].map(plat => (
                                     <button key={plat} onClick={() => handleScrape(plat)} className="w-full text-left px-4 py-3 hover:bg-gov-surface text-white text-sm font-bold flex items-center gap-2 transition-colors">
                                         <span className="material-symbols-outlined text-gov-primary text-sm">wifi_tethering</span>
@@ -291,10 +388,35 @@ export default function SocialPage() {
                         )}
                     </div>
 
-                    <div className="bg-gov-surface border border-gov-light px-3 py-2 rounded-lg text-center min-w-[80px]">
-                        <p className="text-[10px] text-gov-grey uppercase tracking-widest font-bold">Créditos</p>
-                        <p className={`font-black text-lg ${scrapesToday >= 10 ? 'text-red-400' : 'text-white'}`}>{10 - scrapesToday}/10</p>
-                    </div>
+                    <div className="w-[1px] h-8 bg-gov-light mx-2 hidden md:block"></div>
+
+                    <button 
+                        onClick={generatePDFReport}
+                        disabled={isGeneratingReport || mentions.length === 0}
+                        className={`bg-gov-bg border border-gov-light text-white hover:text-green-400 hover:border-green-500/50 px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${isGeneratingReport ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        {isGeneratingReport ? (
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        ) : (
+                            <span className="material-symbols-outlined text-red-400 text-sm">picture_as_pdf</span>
+                        )}
+                        <span className="text-sm font-bold">Generar Reporte (1)</span>
+                    </button>
+
+                    <button 
+                        onClick={() => {
+                            if (!executiveReportText) {
+                                alert('Por favor, genera primero el Reporte PDF (Paso 1) para que la Inteligencia Artificial analice la situación global.');
+                                return;
+                            }
+                            setActiveMention({ author_handle: 'Análisis Ciudadano Global', content: executiveReportText, platform: 'Múltiples Redes' });
+                        }}
+                        disabled={mentions.length === 0 || isGeneratingReport}
+                        className={`bg-gov-bg border border-gov-light text-white hover:text-purple-400 hover:border-purple-500/50 px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${(mentions.length === 0 || isGeneratingReport) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        <span className="material-symbols-outlined text-purple-400 text-sm">smart_toy</span>
+                        <span className="text-sm font-bold">Estrategia AI (2)</span>
+                    </button>
                 </div>
             </div>
 
@@ -359,15 +481,15 @@ export default function SocialPage() {
             {/* AI Action Drawer Modal (Simple Overlay) */}
             {activeMention && (
                 <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-                    <div className="bg-gov-bg border border-gov-light rounded-2xl max-w-2xl w-full p-6 relative shadow-2xl">
-                        <button onClick={() => { setActiveMention(null); setGeneratedContent(null); setAudioUrl(null); }} className="absolute top-4 right-4 text-gov-grey hover:text-white">
+                    <div className="bg-gov-bg border border-gov-light rounded-2xl max-w-2xl w-full p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <button onClick={() => { setActiveMention(null); setGeneratedContent(null); setAudioUrl(null); setPolishedPost(null); setUploadedPhotos([]); }} className="absolute top-4 right-4 text-gov-grey hover:text-white">
                             <span className="material-symbols-outlined">close</span>
                         </button>
                         
                         <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                             <span className="material-symbols-outlined text-gov-primary">smart_toy</span> War Room AI
                         </h3>
-                        <p className="text-sm text-gray-400 mb-6">Genera respuestas automáticas para la mención de <b>{activeMention.author_handle}</b>.</p>
+                        <p className="text-sm text-gray-400 mb-6">Genera una estrategia de comunicación basada en el: <b>{activeMention.author_handle}</b>.</p>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                             <button onClick={() => generateAIContent('press_release')} className="bg-gov-surface hover:bg-gray-800 border border-gov-light p-3 rounded-xl text-center transition-colors">
@@ -395,13 +517,49 @@ export default function SocialPage() {
                             </div>
                         )}
 
-                        {generatedContent && (
+                        {generatedContent && !polishedPost && (
                             <div className="mt-4 animate-in fade-in slide-in-from-bottom-4">
-                                <h4 className="text-sm font-bold text-gov-primary mb-2 uppercase tracking-widest">Resultado Generado:</h4>
-                                <div className="bg-gov-surface border border-gov-light p-4 rounded-xl max-h-60 overflow-y-auto">
+                                <h4 className="text-sm font-bold text-gov-primary mb-2 uppercase tracking-widest">Borrador Estratégico:</h4>
+                                <div className="bg-gov-surface border border-gov-light p-4 rounded-xl max-h-40 overflow-y-auto mb-4">
                                     <p className="text-white text-sm whitespace-pre-wrap">{generatedContent}</p>
                                 </div>
                                 
+                                {/* Evidencia Fotográfica */}
+                                <div className="mb-4">
+                                    <p className="text-xs text-gray-400 mb-2 font-bold uppercase flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[16px]">photo_camera</span> 
+                                        Adjuntar Evidencia Fotográfica
+                                    </p>
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {uploadedPhotos.map((photo, idx) => (
+                                            <div key={idx} className="relative min-w-[80px] h-[80px] rounded-lg overflow-hidden border border-gov-light">
+                                                <img src={photo} alt="Evidencia" className="w-full h-full object-cover" />
+                                                <button onClick={() => setUploadedPhotos(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-black/50 rounded-full p-1 hover:bg-red-500/80 text-white flex items-center justify-center w-5 h-5">
+                                                    <span className="material-symbols-outlined text-[12px]">close</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <label className="min-w-[80px] h-[80px] border-2 border-dashed border-gov-light hover:border-gov-primary rounded-lg flex flex-col items-center justify-center cursor-pointer text-gray-500 hover:text-gov-primary transition-colors bg-gov-bg/50">
+                                            <span className="material-symbols-outlined mb-1 text-lg">add_a_photo</span>
+                                            <span className="text-[10px] font-bold">Subir Foto</span>
+                                            <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* Botón de Pulido */}
+                                <button 
+                                    onClick={polishPost}
+                                    disabled={isPolishing}
+                                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
+                                >
+                                    {isPolishing ? (
+                                        <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Diseñando post institucional...</>
+                                    ) : (
+                                        <><span className="material-symbols-outlined">auto_awesome</span> Optimizar para Redes Sociales con IA</>
+                                    )}
+                                </button>
+
                                 {audioUrl && (
                                     <div className="mt-4 bg-purple-500/10 border border-purple-500/30 p-4 rounded-xl flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -416,6 +574,58 @@ export default function SocialPage() {
                                         <audio controls src={audioUrl} className="h-10"></audio>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {polishedPost && (
+                            <div className="mt-6 animate-in fade-in slide-in-from-right-8">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-sm font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[16px]">verified</span> Post Listo para Publicar
+                                    </h4>
+                                    <button onClick={() => setPolishedPost(null)} className="text-xs text-gray-400 hover:text-white underline">Volver al Borrador</button>
+                                </div>
+                                
+                                {/* Vista Previa Tipo Facebook */}
+                                <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-6 overflow-hidden">
+                                    <div className="p-4 pb-2">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-10 h-10 rounded-full bg-gov-primary flex items-center justify-center text-white font-bold text-lg">H</div>
+                                            <div>
+                                                <p className="font-bold text-gray-900 text-sm flex items-center gap-1">
+                                                    Gobierno Municipal 
+                                                    <span className="material-symbols-outlined text-blue-500 text-[14px]">verified</span>
+                                                </p>
+                                                <p className="text-[11px] text-gray-500">Justo ahora • 🌎</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-gray-800 text-sm whitespace-pre-wrap">{polishedPost}</p>
+                                    </div>
+                                    
+                                    {uploadedPhotos.length > 0 && (
+                                        <div className={`mt-3 grid gap-[1px] bg-gray-200 ${uploadedPhotos.length === 1 ? 'grid-cols-1' : uploadedPhotos.length === 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
+                                            {uploadedPhotos.map((photo, idx) => (
+                                                <img key={idx} src={photo} alt="Evidencia" className="w-full h-48 object-cover bg-white" />
+                                            ))}
+                                        </div>
+                                    )}
+                                    
+                                    <div className="px-4 py-2 border-t border-gray-100 flex gap-4 text-gray-500 text-xs font-bold">
+                                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">thumb_up</span> Me gusta</span>
+                                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">chat_bubble_outline</span> Comentar</span>
+                                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">share</span> Compartir</span>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={() => {
+                                        alert("¡Post publicado exitosamente en las redes sociales del Gobierno Municipal!");
+                                        setActiveMention(null); setGeneratedContent(null); setPolishedPost(null); setUploadedPhotos([]);
+                                    }}
+                                    className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(22,163,74,0.4)] flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
+                                >
+                                    <span className="material-symbols-outlined">send</span> PUBLICAR EN CANALES OFICIALES
+                                </button>
                             </div>
                         )}
                     </div>
@@ -519,86 +729,13 @@ export default function SocialPage() {
                                 "{mention.content}"
                             </p>
                             
-                            <div className="pt-4 border-t border-gov-light/30">
-                                <button 
-                                    onClick={() => setActiveMention(mention)}
-                                    className="w-full bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-600/30 font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <span className="material-symbols-outlined text-sm">smart_toy</span>
-                                    Resolver con Inteligencia Artificial
-                                </button>
+                            <div className="pt-4 mt-2">
                             </div>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* HIDDEN PDF TEMPLATE */}
-            <div id="pdf-report-template" className="hidden bg-white text-black p-8" style={{ width: '800px', fontFamily: 'Arial, sans-serif' }}>
-                {/* Encabezado */}
-                <div className="border-b-4 border-green-700 pb-6 mb-8 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">H. Ayuntamiento</h1>
-                        <p className="text-md text-gray-500 font-bold">Centro de Inteligencia y Escucha Social</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-lg font-bold text-gray-800">Reporte Ejecutivo de Percepción Pública</p>
-                        <p className="text-sm text-gray-500">{new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    </div>
-                </div>
-
-                {/* Métricas Clave */}
-                <div className="flex gap-6 mb-8">
-                    <div className="border-2 border-gray-200 rounded-xl p-6 text-center flex-1 bg-gray-50">
-                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-2">Sentimiento Positivo Global</p>
-                        <p className="text-5xl font-black text-green-600">{globalSentiment}%</p>
-                    </div>
-                    <div className="border-2 border-gray-200 rounded-xl p-6 text-center flex-1 bg-gray-50">
-                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-2">Volumen de Interacciones</p>
-                        <p className="text-5xl font-black text-blue-600">{mentions.length}</p>
-                    </div>
-                </div>
-
-                {/* Resumen Ejecutivo IA */}
-                <div className="mb-8">
-                    <h2 className="text-xl font-bold text-green-800 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
-                        <span className="material-symbols-outlined">analytics</span> Análisis Estratégico AI
-                    </h2>
-                    <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: executiveReportText.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>') }} />
-                </div>
-
-                {/* Temas Clave */}
-                <div className="mb-10 page-break-inside-avoid">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Principales Tendencias</h2>
-                    <div className="flex flex-wrap gap-2">
-                        {Array.from(new Set(mentions.flatMap(m => m.topics || []))).slice(0, 15).map((tag: any, i) => (
-                            <span key={i} className="bg-gray-100 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-xs font-bold shadow-sm">
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Muestreo de Menciones */}
-                <div className="page-break-inside-avoid">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Muestreo de Comentarios Relevantes</h2>
-                    <div className="space-y-4">
-                        {mentions.slice(0, 5).map((m: any, i) => (
-                            <div key={i} className="border-l-4 border-gray-400 pl-4 py-2 bg-gray-50 rounded-r-lg">
-                                <p className="text-xs text-gray-500 mb-1 font-bold">
-                                    {m.author_handle} <span className="font-normal text-gray-400">en {m.platform}</span> 
-                                    <span className={`ml-3 px-2 py-0.5 rounded text-[10px] text-white font-bold ${m.sentiment === 'Positivo' ? 'bg-green-500' : m.sentiment === 'Negativo' ? 'bg-red-500' : 'bg-gray-500'}`}>{m.sentiment}</span>
-                                </p>
-                                <p className="text-sm text-gray-800 italic">"{m.content}"</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="mt-16 text-center text-[10px] text-gray-400 border-t border-gray-200 pt-6 font-mono">
-                    Documento generado confidencialmente por el Sistema Governia Inteligencia Social. 
-                </div>
-            </div>
         </div>
     );
 }

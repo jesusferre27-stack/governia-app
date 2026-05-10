@@ -9,7 +9,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Action and mentionContent are required' }, { status: 400 });
         }
 
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
         const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY; // Para el audio
         
         if (!GEMINI_API_KEY) {
@@ -17,16 +17,23 @@ export async function POST(req: Request) {
         }
 
         // 1. GENERACIÓN DE TEXTO CON GEMINI 2.0 FLASH
-        let systemPrompt = "Eres el Director de Comunicación Social de un municipio. Tu trabajo es responder a menciones en redes sociales.";
+        let systemPrompt = `Eres el Estratega Principal de Comunicación de Crisis de un Gobierno Municipal en México. 
+Tu objetivo es analizar el Reporte de Inteligencia Social proporcionado (que resume la opinión de decenas de ciudadanos) y diseñar una estrategia de contención y respuesta masiva.
+REGLAS ESTRICTAS:
+1. NO inventes nombres de calles, colonias o proyectos. Basate únicamente en los problemas detectados en el reporte.
+2. Si el texto menciona un nombre propio (ej. "Sosimo"), asume que es el alcalde o directivo, NO una calle.
+3. Tu estrategia debe resolver el problema REAL a nivel macro, demostrando que el Gobierno Municipal tiene el control de la situación.`;
         
         if (action === 'press_release') {
-            systemPrompt += " Redacta un COMUNICADO DE PRENSA OFICIAL, formal y empático, para calmar a la ciudadanía respecto a esta mención/queja. Usa un tono institucional, claro y resolutivo. Máximo 3 párrafos.";
+            systemPrompt += "\nTAREA: Redacta un COMUNICADO DE PRENSA OFICIAL (máximo 3 párrafos). Tono institucional, de liderazgo y resolutivo. Anuncia acciones masivas e inmediatas del gobierno para resolver la problemática general detectada en el reporte.";
         } else if (action === 'video_script') {
-            systemPrompt += " Escribe un GUION para un video corto (Reel/TikTok) donde el Alcalde responde a este problema. Debe tener: 1. Gancho (3 seg), 2. Acción que se está tomando (10 seg), 3. Llamado a la confianza (5 seg).";
+            systemPrompt += "\nTAREA: Escribe un GUION para un video corto (TikTok/Reel) del Alcalde dirigiéndose a toda la ciudadanía. Estructura: 1. Reconocimiento del problema general (3 seg), 2. Las cuadrillas ya están trabajando/Acción masiva (10 seg), 3. Llamado a la calma y confianza (5 seg).";
         } else if (action === 'quick_reply') {
-            systemPrompt += " Escribe una RESPUESTA CORTA (max 280 caracteres) para contestar directamente a este ciudadano en Twitter/Facebook. Sé empático y directo.";
+            systemPrompt += "\nTAREA: Escribe una RESPUESTA TIPO (max 280 caracteres) que los community managers puedan usar para contestar masivamente a los ciudadanos en redes sociales. Sé directo y ofréceles una liga de seguimiento o canal oficial.";
         } else if (action === 'audio_script') {
-            systemPrompt += " Escribe un SPOT DE RADIO O PERIFONEO corto, directo al grano, locución institucional. Máximo 40 palabras.";
+            systemPrompt += "\nTAREA: Escribe un SPOT DE RADIO institucional (máx 40 palabras) para difusión masiva, informando a la ciudad que el problema detectado está siendo resuelto por el municipio.";
+        } else if (action === 'polish_post') {
+            systemPrompt += "\nTAREA: Toma el texto base proporcionado y dale 'una mano de gato' para convertirlo en un POST DE REDES SOCIALES (Facebook/Instagram) de ALTO NIVEL GUBERNAMENTAL. Debe sonar muy profesional, moderno, con emojis estratégicos, e indicar sutilmente que se adjuntan fotos de evidencia del trabajo realizado. Usa hashtags institucionales. Hazlo lucir como el trabajo de una agencia de relaciones públicas top.";
         }
 
         const prompt = `Mención ciudadana:\n"${mentionContent}"\n\n${extraDetails ? 'Contexto adicional: ' + extraDetails + '\n' : ''}\nGenera el contenido solicitado.`;
