@@ -216,6 +216,7 @@ export default function SocialPage() {
         
         setIsGeneratingReport(true);
         try {
+            console.log("Iniciando generación de reporte PDF...");
             // 1. Obtener Resumen de Gemini
             const res = await fetch('/api/social/report', {
                 method: 'POST',
@@ -224,9 +225,13 @@ export default function SocialPage() {
             });
             const data = await res.json();
             
-            if (!res.ok) throw new Error(data.error);
+            if (!res.ok) {
+                console.error("Error en API de reporte:", data.error);
+                throw new Error(data.error || "Error al redactar el análisis ejecutivo.");
+            }
             
             setExecutiveReportText(data.report);
+            console.log("Resumen ejecutivo obtenido de Gemini.");
 
             // 2. Generar PDF en un iFrame aislado para evitar crash de html2canvas con Tailwind
             const iframe = document.createElement('iframe');
@@ -291,9 +296,15 @@ export default function SocialPage() {
                 iframe.contentDocument.write(htmlContent);
                 iframe.contentDocument.close();
 
+                console.log("Iframe de reporte listo. Preparando conversión a PDF...");
+
                 setTimeout(async () => {
                     try {
-                        const html2pdf = (await import('html2pdf.js')).default;
+                        const html2pdfModule = await import('html2pdf.js');
+                        const html2pdf = html2pdfModule.default || html2pdfModule;
+                        
+                        console.log("Librería html2pdf cargada correctamente.");
+
                         const opt = {
                             margin:       10,
                             filename:     'Analisis_Opinion_Publica.pdf',
@@ -303,19 +314,20 @@ export default function SocialPage() {
                         };
                         
                         await html2pdf().set(opt).from(iframe.contentDocument?.body).save();
+                        console.log("PDF generado y descarga iniciada.");
                     } catch (pdfError) {
-                        console.error(pdfError);
-                        alert("Error al guardar el PDF.");
+                        console.error("Error detallado de PDF:", pdfError);
+                        alert("Error al guardar el PDF. Revisa la consola para más detalles.");
+                    } finally {
+                        document.body.removeChild(iframe);
+                        setIsGeneratingReport(false);
                     }
-                    
-                    document.body.removeChild(iframe);
-                    setIsGeneratingReport(false);
-                }, 500); // Dar tiempo a que el iframe renderice
+                }, 800); // Aumentado ligeramente el tiempo de renderizado
             }
 
-        } catch (err) {
-            console.error(err);
-            alert("Error al redactar el análisis ejecutivo.");
+        } catch (err: any) {
+            console.error("Error general en generación de reporte:", err);
+            alert(err.message || "Error al redactar el análisis ejecutivo.");
             setIsGeneratingReport(false);
         }
     };

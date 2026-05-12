@@ -33,6 +33,7 @@ Instrucciones:
             prompt += `\nIMPORTANTE: El enfoque principal de este análisis debe centrarse en este tema/contexto: "${context}".`;
         }
 
+        console.log("Enviando prompt a Gemini (2.0 Flash)...");
         const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -42,17 +43,19 @@ Instrucciones:
         });
 
         if (!geminiRes.ok) {
-            console.error("Gemini Error:", await geminiRes.text());
-            throw new Error("Falló la conexión con Gemini AI");
+            const errorText = await geminiRes.text();
+            console.error("Gemini API Error Detail:", errorText);
+            throw new Error(`Falló la conexión con Gemini AI: ${geminiRes.status}`);
         }
 
         const geminiData = await geminiRes.json();
         const generatedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar el reporte.";
 
+        console.log("Reporte generado exitosamente por Gemini.");
         return NextResponse.json({ success: true, report: generatedText });
 
-    } catch (error) {
-        console.error("Report Generation Error:", error);
-        return NextResponse.json({ error: 'Error generando el reporte' }, { status: 500 });
+    } catch (error: any) {
+        console.error("Report Generation Critical Error:", error);
+        return NextResponse.json({ error: error.message || 'Error generando el reporte' }, { status: 500 });
     }
 }

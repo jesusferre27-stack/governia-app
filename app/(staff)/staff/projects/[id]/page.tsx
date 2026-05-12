@@ -102,30 +102,31 @@ export default function ProjectDetailPage() {
     };
 
     const downloadPDF = async () => {
-        const html2pdf = (await import("html2pdf.js")).default;
-        const element = document.getElementById("expediente-tecnico");
-        
-        if (!element) return;
-
-        const opt = {
-            margin:       10,
-            filename:     `Expediente_${project?.name.replace(/\s+/g, '_')}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { 
-                scale: 2, 
-                useCORS: true,
-                letterRendering: true
-            },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
         try {
+            const html2pdfModule = await import("html2pdf.js");
+            const html2pdf = html2pdfModule.default || html2pdfModule;
+            
+            const element = document.getElementById("expediente-tecnico");
+            if (!element) return;
+
+            const opt = {
+                margin:       10,
+                filename:     `Expediente_${project?.name.replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true,
+                    letterRendering: true
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
             // Hacer visible temporalmente para la captura
             element.parentElement!.style.opacity = "1";
             await html2pdf().from(element).set(opt).save();
             element.parentElement!.style.opacity = "0";
         } catch (err) {
-            console.error("Error PDF:", err);
+            console.error("Error detallado de PDF:", err);
             alert("Error al generar el documento. Intenta de nuevo.");
         }
     };

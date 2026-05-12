@@ -97,7 +97,8 @@ export default function CitizenRequestDetailPage() {
         const proc = request.procedures;
         const now = new Date();
         const dateStr = now.toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
-        const html2pdf = (await import("html2pdf.js" as any)).default;
+        const html2pdfModule = await import("html2pdf.js" as any);
+        const html2pdf = html2pdfModule.default || html2pdfModule;
 
         const el = document.createElement("div");
         el.innerHTML = `
